@@ -2,7 +2,7 @@
 
 > **STATUS: PARTIALLY SUPERSEDED by [`phase56-component-modularization.md`](phase56-component-modularization.md).**
 >
-> The **component folder shape** and **per-component `contract.yaml` + `config.yaml`** from §3, §5, §6 have been absorbed into phase 56, which modularizes all in-tree components (checks, agents, advisors, gates) using the shape described there. Phase 56 adopts folder-name-prefixed filenames (e.g. `ports.contract.yaml`) rather than the generic names originally proposed here, to eliminate conversational and IDE ambiguity.
+> The **component folder shape** and **per-component `contract.yaml` + `config.yaml`** from §3, §5, §6 have been absorbed into phase 56, which modularizes all in-tree components (checks, agents, advisors, gates) using the shape described there. Phase 56 keeps the generic role-based filenames this doc originally proposed (`check.py`, `contract.yaml`, `config.yaml` — Next.js App Router style), with the folder name as the canonical slug.
 >
 > **Still future work (not in phase 56):**
 > - External `modules/` discovery root (§4.2, §4.3)
