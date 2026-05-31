@@ -20,6 +20,7 @@ from enum import Enum
 from typing import Any
 from urllib.parse import urlparse
 
+from app.components.base import BaseComponent
 from app.lib.timeutils import now_utc
 
 logger = logging.getLogger(__name__)
@@ -211,7 +212,7 @@ class CheckCondition:
             return f"{self.output_name} {self.operator} {self.value}"
 
 
-class BaseCheck(ABC):
+class BaseCheck(BaseComponent, ABC):
     """
     Base class for all recon checks.
 
@@ -228,6 +229,11 @@ class BaseCheck(ABC):
     # ─── Identity ───────────────────────────────────────────────
     name: str = "base_check"
     description: str = "Base check - override this"
+    component_type: str = "check"  # BaseComponent identity (Phase 56 §6)
+
+    # ─── Critical-observation policy (Phase 56 §5; wired end-to-end in 56.15) ──
+    on_critical: str = "annotate"
+    enabled: bool = True
 
     # ─── Conditions ─────────────────────────────────────────────
     conditions: list[CheckCondition] = []
@@ -268,6 +274,40 @@ class BaseCheck(ABC):
         self.result: CheckResult | None = None
         self._last_request_time: float = 0
         self._scope_validator: Callable[[str], bool] | None = None
+
+    @classmethod
+    def from_config(cls, contract, config) -> "BaseCheck":
+        """Build a check instance from its parsed contract + resolved config (§6).
+
+        Construction is no-arg (`cls()`), matching how `get_real_checks()`
+        instantiates every check today; the load-time config baseline (§5.1
+        layers 1-4) is then applied by attribute assignment. Per-scan overrides
+        (layer 6) are applied later in the scan path, not here.
+
+        Identity (`id`/`name`) is set authoritatively from the contract so the
+        contract.yaml is the single source of truth even if a check class later
+        drops its `name` attribute. Execution wiring (`conditions`/`produces`/
+        applicability) continues to come from the class attributes — `contract.yaml`
+        is the machine-readable mirror the loader/verify/diff read without
+        importing, per §6 (from_config applies only the config baseline).
+
+        Args:
+            contract: a validated `app.components.contracts.CheckContract`.
+            config:   a `app.components.config_models.ResolvedConfig`.
+        """
+        inst = cls()
+        # Identity — authoritative from the contract.
+        inst.id = str(contract.id)
+        inst.name = contract.name
+        inst.component_type = contract.type
+        # Load-time config baseline (tunables).
+        inst.timeout_seconds = config.timeout_seconds
+        inst.requests_per_second = config.requests_per_second
+        inst.retry_count = config.retry_count
+        inst.delay_between_targets = config.delay_between_targets
+        inst.enabled = config.enabled
+        inst.on_critical = config.on_critical
+        return inst
 
     def set_scope_validator(self, validator: Callable[[str], bool]):
         """Set a function to validate URLs against scope."""

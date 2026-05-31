@@ -34,7 +34,7 @@ from app.checks.web.mass_assignment import MassAssignmentCheck
 from app.checks.web.openapi import OpenAPICheck
 from app.checks.web.paths import PathProbeCheck
 from app.checks.web.redirect_chain import RedirectChainCheck
-from app.checks.web.robots import RobotsTxtCheck
+from app.checks.web.robots_txt import RobotsTxtCheck
 from app.checks.web.sitemap import SitemapCheck
 from app.checks.web.sri_check import SRICheck
 from app.checks.web.ssrf_indicator import SSRFIndicatorCheck

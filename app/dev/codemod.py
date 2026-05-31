@@ -1,0 +1,102 @@
+"""
+app/dev/codemod.py - Import-path rewriting for moved component modules (Phase 56 §10 risk 3).
+
+When a flat check file moves into a component folder whose name differs from the
+old filename (98 of 133 checks — suite-prefixed `mcp_`/`agent_`/`rag_`/`cag_` and
+abbreviated AI files), the old module path vanishes. This rewrites the broken
+references across `app/` and `tests/`.
+
+Two reference *forms* need different targets, because the folder `__init__.py`
+re-exports only the entry class (§3.1):
+
+- **Import statements** — `from app.checks.<suite>.<oldstem> import X`
+  → `from app.checks.<suite>.<folder> import X`
+  (resolves through the package re-export; preserves class identity).
+
+- **Attribute / string references** — e.g. `patch("app.checks.<suite>.<oldstem>.AsyncHttpClient")`
+  → `...<folder>.check.AsyncHttpClient`
+  (a module-level symbol that the package `__init__` does NOT re-export, so it must
+  point at the `check` submodule where it's actually bound).
+
+Same-name checks (folder == old stem) need no rewrite: the package transparently
+replaces the old module.
+
+Word-boundary safe: `app.checks.web.robots` is rewritten but the already-correct
+`app.checks.web.robots_txt` is left untouched (the trailing `_` is a word char, so
+no boundary match).
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from pathlib import Path
+
+
+@dataclass
+class CodemodResult:
+    file: Path
+    replacements: int
+
+
+def _import_pattern(old_dotted: str) -> re.Pattern[str]:
+    # `from <old_dotted> import`  — only the bare-module import form.
+    return re.compile(rf"(\bfrom\s+){re.escape(old_dotted)}(\s+import\b)")
+
+
+def _attr_pattern(old_dotted: str) -> re.Pattern[str]:
+    # `<old_dotted>.` followed by an attribute, NOT continuing the identifier
+    # (so robots_txt is excluded) and NOT the `import` keyword form.
+    return re.compile(rf"(?<![\w.]){re.escape(old_dotted)}(?=\.)")
+
+
+def rewrite_text(text: str, old_dotted: str, new_pkg_dotted: str, entry_stem: str) -> tuple[str, int]:
+    """Rewrite one file's text. Returns (new_text, replacement_count)."""
+    count = 0
+    new_module_dotted = f"{new_pkg_dotted}.{entry_stem}"
+
+    # 1. Import statements → package re-export path.
+    text, n = _import_pattern(old_dotted).subn(rf"\g<1>{new_pkg_dotted}\g<2>", text)
+    count += n
+
+    # 2. Remaining attribute/string references → the .check submodule.
+    #    (Import lines were already rewritten above, so these are the patch/attr forms.)
+    text, n = _attr_pattern(old_dotted).subn(new_module_dotted, text)
+    count += n
+
+    return text, count
+
+
+def rewrite_imports(
+    old_dotted: str,
+    new_pkg_dotted: str,
+    entry_stem: str,
+    search_roots: list[Path],
+    *,
+    dry_run: bool = False,
+) -> list[CodemodResult]:
+    """Rewrite every reference to `old_dotted` under the given roots.
+
+    Args:
+        old_dotted: e.g. "app.checks.web.robots"
+        new_pkg_dotted: the new folder package, e.g. "app.checks.web.robots_txt"
+        entry_stem: the entry module stem inside the folder, e.g. "check"
+        search_roots: directories to scan for *.py files.
+        dry_run: if True, do not write; only report what would change.
+    """
+    results: list[CodemodResult] = []
+    seen: set[Path] = set()
+    for root in search_roots:
+        for py in sorted(Path(root).rglob("*.py")):
+            if py in seen:
+                continue
+            seen.add(py)
+            original = py.read_text(encoding="utf-8")
+            if old_dotted not in original:
+                continue
+            new_text, count = rewrite_text(original, old_dotted, new_pkg_dotted, entry_stem)
+            if count and new_text != original:
+                if not dry_run:
+                    py.write_text(new_text, encoding="utf-8")
+                results.append(CodemodResult(py, count))
+    return results

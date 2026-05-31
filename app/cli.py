@@ -2262,6 +2262,210 @@ def swarm_status(ctx):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Dev Commands (Phase 56 §8, C11)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Local source-tree authoring tools — a different category from the operator
+# commands above (thin HTTP clients). These run SERVERLESS (no ChainsmithClient):
+# a remote/Docker server can't refactor the developer's local source. The group is
+# `hidden=True` (out of the operator `--help`) but runnable in any checkout and in
+# CI. All logic lives in `app/dev/`; these are thin wrappers.
+
+
+@cli.group("dev", hidden=True)
+def dev_group():
+    """Developer tooling: component scaffolding, migration, contract integrity."""
+
+
+def _require_source_tree() -> None:
+    """Dev commands need an editable source tree; bail clearly if absent."""
+    if not Path("app/checks").is_dir():
+        click.echo(
+            click.style(
+                "dev commands require the Chainsmith source tree (app/checks not found).",
+                fg="red",
+            ),
+            err=True,
+        )
+        sys.exit(2)
+
+
+@dev_group.command("verify-contracts")
+@click.option("--root", default="app/checks", help="Component type root to verify")
+@click.option(
+    "--type", "component_type", default="check", help="Component type (check/agent/advisor/gate)"
+)
+def dev_verify_contracts(root: str, component_type: str):
+    """Validate every contract.yaml + folder hygiene (§8.6). Exit 1 on violations."""
+    _require_source_tree()
+    from app.component_loader import verify_contracts
+
+    violations = verify_contracts(Path(root), component_type)
+    if not violations:
+        click.echo(click.style("verify-contracts: OK (no violations)", fg="green"))
+        return
+    for v in violations:
+        click.echo(click.style(f"  {v}", fg="red"), err=True)
+    click.echo(click.style(f"{len(violations)} violation(s)", fg="red"), err=True)
+    sys.exit(1)
+
+
+@dev_group.command("diff-registry")
+@click.option("--save-baseline", "save_baseline", type=click.Path(), help="Dump live registry to JSON")
+@click.option("--compare", "compare_to", type=click.Path(exists=True), help="Diff current vs baseline")
+@click.option("--rename-map", "rename_map", type=click.Path(exists=True), help="Category-A rename map (YAML)")
+def dev_diff_registry(save_baseline: str | None, compare_to: str | None, rename_map: str | None):
+    """Snapshot or diff the live check registry (§8.1)."""
+    _require_source_tree()
+    from app.dev import registry_diff
+
+    if save_baseline:
+        count = registry_diff.save_baseline(Path(save_baseline))
+        click.echo(click.style(f"Saved baseline of {count} checks → {save_baseline}", fg="green"))
+        return
+    if compare_to:
+        report = registry_diff.compare(
+            Path(compare_to), Path(rename_map) if rename_map else None
+        )
+        if report["clean"]:
+            click.echo(
+                click.style(
+                    f"diff-registry: CLEAN ({report['current_count']} checks, identical set)",
+                    fg="green",
+                )
+            )
+            return
+        click.echo(click.style("diff-registry: DRIFT detected", fg="red"), err=True)
+        if report["added"]:
+            click.echo(f"  added:   {report['added']}", err=True)
+        if report["removed"]:
+            click.echo(f"  removed: {report['removed']}", err=True)
+        for name, diffs in report["changed"].items():
+            click.echo(f"  changed: {name}: {diffs}", err=True)
+        sys.exit(1)
+    click.echo("Specify --save-baseline or --compare.", err=True)
+    sys.exit(2)
+
+
+@dev_group.command("new-check")
+@click.option("--name", required=True, help="Check slug (folder + contract.name)")
+@click.option("--suite", required=True, help="Suite folder (web/network/ai/...)")
+@click.option("--description", default="", help="One-line description")
+def dev_new_check(name: str, suite: str, description: str):
+    """Scaffold a new check component folder (§8.1)."""
+    _require_source_tree()
+    from app.dev import scaffold
+
+    res = scaffold.new_check(name=name, suite=suite, description=description)
+    click.echo(click.style(f"Created {res.folder}", fg="green"))
+    for f in res.files:
+        click.echo(f"  {f}")
+
+
+def _load_rename_map(path: str | None) -> dict:
+    if not path:
+        return {}
+    import yaml
+
+    return yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
+
+
+@dev_group.command("migrate-check")
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--rename-map", "rename_map", type=click.Path(exists=True), help="Category-A rename map")
+@click.option("--dry-run", is_flag=True, help="Report actions without writing")
+def dev_migrate_check(path: str, rename_map: str | None, dry_run: bool):
+    """Migrate a flat check file into a component folder (§8.1)."""
+    _require_source_tree()
+    from app.dev import migrate
+
+    res = migrate.migrate_check(Path(path), _load_rename_map(rename_map), dry_run=dry_run)
+    _print_migrate_result(res)
+
+
+@dev_group.command("migrate-suite")
+@click.argument("suite")
+@click.option("--rename-map", "rename_map", type=click.Path(exists=True), help="Category-A rename map")
+@click.option("--dry-run", is_flag=True, help="Report actions without writing")
+def dev_migrate_suite(suite: str, rename_map: str | None, dry_run: bool):
+    """Migrate every flat check in a suite (§8.1 driver)."""
+    _require_source_tree()
+    from app.dev import migrate
+
+    for res in migrate.migrate_suite(suite, _load_rename_map(rename_map), dry_run=dry_run):
+        _print_migrate_result(res)
+
+
+@dev_group.command("scan-baseline")
+@click.option("--target", required=True, help="Scan target (e.g. *.fakobanko.local)")
+@click.option("--scenario", required=True, help="Scenario to load (e.g. fakobanko)")
+@click.option("--server", default="127.0.0.1:8000", help="Running server host:port")
+@click.option("--suite", "suites", multiple=True, help="Limit to suite(s)")
+@click.option("--parallel", is_flag=True, help="Run checks in parallel within phases")
+@click.option("--save-baseline", "save_baseline", type=click.Path(), help="Save observation snapshot")
+@click.option("--compare", "compare_to", type=click.Path(exists=True), help="Diff vs a saved snapshot")
+def dev_scan_baseline(
+    target: str,
+    scenario: str,
+    server: str,
+    suites: tuple,
+    parallel: bool,
+    save_baseline: str | None,
+    compare_to: str | None,
+):
+    """Run a scenario scan and snapshot/diff its observations (§9 anchor #2).
+
+    Unlike other dev commands this talks to a RUNNING server (a scan is a server
+    operation). Capture a baseline before migrating a suite, then --compare after.
+    """
+    from app.cli_client import ChainsmithClient
+    from app.dev import scan_diff
+
+    client = ChainsmithClient(f"http://{server}")
+    click.echo(f"Scanning {target} (scenario={scenario}, suites={list(suites) or 'all'})...")
+    observations = scan_diff.run_scenario_scan(
+        client, target, scenario, list(suites) or None, parallel=parallel
+    )
+    snapshot = scan_diff.snapshot_from_observations(observations)
+    click.echo(click.style(f"  {snapshot['total']} observations", fg="green"))
+
+    if save_baseline:
+        scan_diff.save_baseline(Path(save_baseline), snapshot)
+        click.echo(click.style(f"Saved observation baseline → {save_baseline}", fg="green"))
+    if compare_to:
+        report = scan_diff.compare(Path(compare_to), snapshot)
+        if report["clean"]:
+            click.echo(
+                click.style(
+                    f"scan-baseline: CLEAN ({report['total_current']} observations, identical set)",
+                    fg="green",
+                )
+            )
+        else:
+            click.echo(click.style("scan-baseline: DRIFT detected", fg="red"), err=True)
+            for ident in report["removed"]:
+                click.echo(click.style(f"  - removed: {ident}", fg="red"), err=True)
+            for ident in report["added"]:
+                click.echo(click.style(f"  + added:   {ident}", fg="yellow"), err=True)
+            for name, delta in report["by_check_delta"].items():
+                click.echo(f"    {name}: {delta[0]} -> {delta[1]}", err=True)
+            sys.exit(1)
+
+
+def _print_migrate_result(res) -> None:
+    prefix = "[dry-run] " if res.dry_run else ""
+    click.echo(click.style(f"{prefix}{res.source}", fg="cyan"))
+    for folder in res.folders:
+        click.echo(f"  → {folder}")
+    if res.removed_from_resolver:
+        click.echo(f"  removed from resolver: {res.removed_from_resolver}")
+    if res.codemod_files:
+        click.echo(f"  codemodded {len(res.codemod_files)} file(s)")
+    for todo in res.todos:
+        click.echo(click.style(f"  TODO: {todo}", fg="yellow"))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Entry Point
 # ═══════════════════════════════════════════════════════════════════════════════
 

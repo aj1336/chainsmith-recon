@@ -81,26 +81,41 @@ chainsmith = "app.cli:main"
 
 # ─── Tool Configuration ────────────────────────────────────────────────
 
+# Single source of pytest configuration (Phase 56.1 / C12): pytest.ini was
+# deleted and its settings folded in here. pytest reads only the first config
+# file it finds, so the previous pytest.ini silently shadowed this block —
+# --strict-markers, minversion, python_files/python_functions were all inert.
 [tool.pytest.ini_options]
 minversion = "8.0"
 asyncio_mode = "auto"
-testpaths = ["tests"]
+asyncio_default_fixture_loop_scope = "function"
+# Co-located component tests live under app/checks/<suite>/<check>/tests/ (Phase 56
+# §10 risk 2). Sanction the check root explicitly (not a blanket "app", which would
+# let pytest wander into non-component code). app/agents | app/advisors | app/gates
+# get added as 56.10-56.12 land.
+testpaths = ["tests", "app/checks"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = [
     "-ra",
-    "-q",
+    "-v",
     "--strict-markers",
     "--tb=short",
+    "-p",
+    "no:anyio",
+    # idiomatic mode for co-located / namespaced tests; avoids path-derived
+    # module-name collisions and the __init__.py-per-tests/-dir requirement.
+    "--import-mode=importlib",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks integration tests",
+    "integration: marks tests requiring external services",
     "network: marks tests requiring network access",
     "unit: pure logic, no I/O",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
 ]
 
 [tool.coverage.run]

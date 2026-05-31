@@ -245,6 +245,7 @@ services:
       chainsmith-shared:
         aliases:
           - ml.fakobanko.local
+          - cache.fakobanko.local
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8084/health"]
@@ -374,6 +375,7 @@ services:
       chainsmith-shared:
         aliases:
           - vector.fakobanko.local
+          - rag.fakobanko.local
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8087/health"]

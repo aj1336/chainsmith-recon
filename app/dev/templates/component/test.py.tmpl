@@ -1,0 +1,9 @@
+"""Co-located tests for the {name} check (Phase 56 §3)."""
+
+from {package}.{entry_stem} import {class_name}
+
+
+class Test{class_name}Init:
+    def test_default_initialization(self):
+        check = {class_name}()
+        assert check.name == "{name}"

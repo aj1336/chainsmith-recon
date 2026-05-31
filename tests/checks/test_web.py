@@ -1,4 +1,8 @@
-"""Tests for header analysis, robots.txt, and path probe web checks."""
+"""Tests for header analysis and path probe web checks.
+
+robots_txt tests migrated to app/checks/web/robots_txt/tests/ in the Phase 56.1
+pilot (co-located with the component).
+"""
 
 from unittest.mock import AsyncMock, patch
 
@@ -7,7 +11,6 @@ import pytest
 from app.checks.base import Service
 from app.checks.web.headers import HeaderAnalysisCheck
 from app.checks.web.paths import PathProbeCheck
-from app.checks.web.robots import RobotsTxtCheck
 from app.lib.http import HttpResponse
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -189,137 +192,6 @@ class TestHeaderAnalysisCheckService:
             result = await check.check_service(sample_service, {})
 
         assert len(result.errors) > 0
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# RobotsTxtCheck Tests
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
-class TestRobotsTxtCheckInit:
-    """Tests for RobotsTxtCheck initialization."""
-
-    def test_default_initialization(self):
-        """Check initializes with defaults."""
-        check = RobotsTxtCheck()
-
-        assert check.name == "robots_txt"
-        assert len(check.INTERESTING_PATTERNS) > 0
-
-
-class TestRobotsTxtCheckService:
-    """Tests for RobotsTxtCheck.check_service."""
-
-    async def test_robots_not_found(self, sample_service):
-        """No observation when robots.txt missing."""
-        check = RobotsTxtCheck()
-        response = make_response(status_code=404)
-
-        with patch("app.checks.web.robots.AsyncHttpClient", return_value=mock_client(response)):
-            result = await check.check_service(sample_service, {})
-
-        assert len(result.observations) == 0
-
-    async def test_parses_disallow_paths(self, sample_service):
-        """Disallow paths are extracted."""
-        check = RobotsTxtCheck()
-        robots_content = """
-User-agent: *
-Disallow: /private/
-Disallow: /admin/
-Disallow: /public/
-"""
-        response = make_response(body=robots_content)
-
-        with patch("app.checks.web.robots.AsyncHttpClient", return_value=mock_client(response)):
-            result = await check.check_service(sample_service, {})
-
-        # /admin/ matches "admin" pattern
-        sensitive_observations = [f for f in result.observations if "Sensitive paths" in f.title]
-        assert len(sensitive_observations) == 1
-
-    async def test_detects_sensitive_paths(self, sample_service):
-        """Sensitive patterns in robots.txt are flagged with correct title and severity."""
-        check = RobotsTxtCheck()
-        # Realistic robots.txt with sensitive paths embedded among normal directives
-        robots_content = (
-            "# robots.txt for example.com\n"
-            "User-agent: *\n"
-            "Disallow: /search\n"
-            "Disallow: /cgi-bin/\n"
-            "Disallow: /wp-content/uploads/\n"
-            "Disallow: /staging/api/v2/health\n"
-            "Disallow: /data/export/reports\n"
-            "Disallow: /internal/debug/console\n"
-            "Allow: /public/\n"
-        )
-        response = make_response(body=robots_content)
-
-        with patch("app.checks.web.robots.AsyncHttpClient", return_value=mock_client(response)):
-            result = await check.check_service(sample_service, {})
-
-        sensitive_observations = [f for f in result.observations if "Sensitive paths" in f.title]
-        assert len(sensitive_observations) == 1
-        obs = sensitive_observations[0]
-        assert obs.severity == "low"
-        assert obs.title.startswith("Sensitive paths in robots.txt")
-        # Evidence should contain the matching paths
-        assert "/staging/api/v2/health" in obs.evidence or "/data/export/reports" in obs.evidence
-
-    async def test_benign_robots_no_sensitive_observation(self, sample_service):
-        """A robots.txt with only benign paths produces no sensitive-path observation."""
-        check = RobotsTxtCheck()
-        robots_content = (
-            "# Standard robots.txt\n"
-            "User-agent: *\n"
-            "Disallow: /search\n"
-            "Disallow: /cgi-bin/\n"
-            "Disallow: /wp-content/uploads/\n"
-            "Disallow: /tmp/\n"
-            "Allow: /public/\n"
-        )
-        response = make_response(body=robots_content)
-
-        with patch("app.checks.web.robots.AsyncHttpClient", return_value=mock_client(response)):
-            result = await check.check_service(sample_service, {})
-
-        sensitive_observations = [f for f in result.observations if "Sensitive paths" in f.title]
-        assert len(sensitive_observations) == 0
-
-    async def test_extracts_sitemaps(self, sample_service):
-        """Sitemap URLs are extracted."""
-        check = RobotsTxtCheck()
-        robots_content = """
-User-agent: *
-Disallow: /private/
-Sitemap: https://example.com/sitemap.xml
-Sitemap: https://example.com/sitemap2.xml
-"""
-        response = make_response(body=robots_content)
-
-        with patch("app.checks.web.robots.AsyncHttpClient", return_value=mock_client(response)):
-            result = await check.check_service(sample_service, {})
-
-        sitemap_observations = [f for f in result.observations if "Sitemaps" in f.title]
-        assert len(sitemap_observations) == 1
-        assert sitemap_observations[0].severity == "info"
-
-    async def test_sets_outputs(self, sample_service):
-        """Outputs contain parsed data."""
-        check = RobotsTxtCheck()
-        robots_content = """
-User-agent: *
-Disallow: /admin/
-Sitemap: https://example.com/sitemap.xml
-"""
-        response = make_response(body=robots_content)
-
-        with patch("app.checks.web.robots.AsyncHttpClient", return_value=mock_client(response)):
-            result = await check.check_service(sample_service, {})
-
-        key = f"robots_{sample_service.port}"
-        assert key in result.outputs
-        assert "/admin/" in result.outputs[key]["disallowed"]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

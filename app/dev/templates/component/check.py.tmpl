@@ -1,0 +1,26 @@
+"""
+{suite}/{name} - {description}
+"""
+
+from typing import Any
+
+from app.checks.base import CheckCondition, CheckResult, Service, ServiceIteratingCheck
+
+
+class {class_name}(ServiceIteratingCheck):
+    """{description}"""
+
+    # Identity (name/description also live in contract.yaml — the loader reads the
+    # contract; these keep the class self-describing and direct instantiation sane).
+    name = "{name}"
+    description = "{description}"
+
+    # Execution wiring (mirrored in contract.yaml: depends_on / produces).
+    conditions = [CheckCondition("services", "truthy")]
+    produces = []
+    service_types = ["http", "html", "api"]
+
+    async def check_service(self, service: Service, context: dict[str, Any]) -> CheckResult:
+        result = CheckResult(success=True)
+        # TODO: implement the check.
+        return result

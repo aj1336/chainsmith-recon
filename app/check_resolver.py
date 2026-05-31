@@ -200,7 +200,6 @@ def get_real_checks() -> list:
         OpenAPICheck,
         PathProbeCheck,
         RedirectChainCheck,
-        RobotsTxtCheck,
         SitemapCheck,
         SRICheck,
         SSRFIndicatorCheck,
@@ -232,7 +231,6 @@ def get_real_checks() -> list:
         HeaderAnalysisCheck(),
         CookieSecurityCheck(),
         CorsCheck(),
-        RobotsTxtCheck(),
         WAFDetectionCheck(),
         AuthDetectionCheck(),
         FaviconCheck(),
@@ -369,6 +367,20 @@ def get_real_checks() -> list:
     ]
 
     logger.info(f"Loaded {len(checks)} community checks")
+
+    # Auto-discovered components (Phase 56): checks migrated to the folder shape
+    # (contract.yaml + config.yaml) are discovered here and removed from the hand
+    # list above. During the suite-by-suite migration the two coexist; the hand
+    # list shrinks as `discovered` grows. Replaces get_real_checks() entirely once
+    # all suites are migrated (56.9).
+    from pathlib import Path
+
+    from app.component_loader import discover_components
+
+    discovered = discover_components(Path(__file__).parent / "checks", "check")
+    if discovered:
+        checks.extend(discovered)
+        logger.info(f"Loaded {len(discovered)} auto-discovered checks")
 
     # Custom checks (dynamic discovery from custom/)
     custom = _get_custom_checks()

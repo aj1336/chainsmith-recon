@@ -1,0 +1,25 @@
+# Identity + I/O contract for the {name} check (Phase 56 §4).
+# The loader reads this; `name` must match the folder name.
+
+id: {uuid}
+name: {name}
+type: check
+description: "{description}"
+entry: check.py:{class_name}
+
+suite: {suite}
+depends_on:
+  - output_name: services
+    operator: truthy
+produces: []
+
+intrusive: false
+service_types: [http, html, api]
+parallel_safe: false
+
+outputs:
+  observations: [Observation]
+side_effects: [network]
+techniques: []
+references: []
+reason: ""

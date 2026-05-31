@@ -22,8 +22,6 @@ class RobotsTxtCheck(ServiceIteratingCheck):
     produces = ["robots_paths"]
     service_types = ["http", "html", "api"]
 
-    timeout_seconds = 30.0
-    delay_between_targets = 0.2
 
     reason = "robots.txt often reveals hidden paths that admins want to keep from search engines"
     references = ["OWASP WSTG-INFO-03", "RFC 9309"]
