@@ -1,0 +1,31 @@
+id: 79e6aef9-9516-474c-ba9f-9e6ffe2a09ae
+name: mcp_resource_traversal
+type: check
+description: Test MCP resource URIs for path traversal and SSRF
+entry: check.py:MCPResourceTraversalCheck
+suite: mcp
+depends_on:
+- output_name: mcp_servers
+  operator: truthy
+produces:
+- mcp_resource_traversal_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- path traversal
+- SSRF
+- protocol smuggling
+references:
+- MCP Specification - Resources - https://spec.modelcontextprotocol.io/specification/server/resources/
+- CWE-22 Path Traversal
+- CWE-918 Server-Side Request Forgery
+reason: MCP resources accessed by URI may be vulnerable to path traversal and SSRF

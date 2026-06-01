@@ -1,0 +1,34 @@
+id: d7cbabdc-b0ad-4aba-ba44-492a996de049
+name: mcp_prompt_injection
+type: check
+description: Test for prompt injection via MCP tool results flowing into LLM context
+entry: check.py:MCPPromptInjectionCheck
+suite: mcp
+depends_on:
+- output_name: mcp_tools
+  operator: truthy
+- output_name: mcp_servers
+  operator: truthy
+produces:
+- mcp_injection_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- prompt injection
+- tool result manipulation
+- LLM exploitation
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- MITRE ATLAS - AML.T0051 LLM Plugin Compromise
+- MCP Specification - https://modelcontextprotocol.io/specification
+reason: Tool results flow into LLM context as trusted content — the primary MCP exploit
+  vector

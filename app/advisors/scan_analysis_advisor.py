@@ -84,9 +84,9 @@ FOLLOW_UP_RULES: list[dict] = [
         "confidence": "high",
     },
     {
-        "trigger_check": "discovery",
+        "trigger_check": "mcp_discovery",
         "trigger_condition": "observations",
-        "suggest": "tool_enumeration",
+        "suggest": "mcp_tool_enumeration",
         "reason": "MCP servers found — enumerating available tools reveals attack surface.",
         "confidence": "high",
     },

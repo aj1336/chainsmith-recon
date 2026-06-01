@@ -64,7 +64,7 @@
                     <!-- Phase indicators for dynamic scan -->
                     <div class="progress-phases" id="phase-indicators">
                         <div class="progress-phase-wrapper">
-                            <div class="progress-phase" id="phase-discovery" data-phase="discovery"></div>
+                            <div class="progress-phase" id="phase-discovery" data-phase="mcp_discovery"></div>
                             <div class="progress-phase-label">Discovery</div>
                         </div>
                         <div class="progress-phase-wrapper">
@@ -337,12 +337,12 @@
         let streamRefreshPending = false;
         let observations = [];
         let isPaused = false;
-        let lastPhase = 'discovery';
+        let lastPhase = 'mcp_discovery';
         let checkPhases = new Map(); // Track which phase each check belongs to
 
         // Phase categorization for checks (maps check names to UI phases)
         const phaseMapping = {
-            'discovery': ['network_dns_enumeration', 'network_service_probe'],
+            'mcp_discovery': ['network_dns_enumeration', 'network_service_probe'],
             'probing': ['web_header_analysis', 'web_robots_txt', 'web_path_probe', 'web_openapi_discovery', 'web_cors', 'network_port_scan'],
             'analysis': ['ai_framework_fingerprint', 'ai_error_leakage', 'model_info'],
             'ai': ['llm_endpoint', 'embedding_endpoint', 'ai_tool_discovery', 'ai_prompt_leakage', 'rate_limit', 'content_filter', 'context_window', 'mcp', 'agent', 'rag', 'cag']
@@ -574,7 +574,7 @@
         function determineCurrentPhase(checks) {
             // Map backend suites to UI phases (3 phases)
             const suiteToPhase = {
-                'network': 'discovery',
+                'network': 'mcp_discovery',
                 'web': 'target-analysis',
                 'ai': 'target-analysis',
                 'mcp': 'ai-checks',
@@ -583,8 +583,8 @@
                 'cag': 'ai-checks'
             };
             
-            const phases = ['discovery', 'target-analysis', 'ai-checks'];
-            let highestPhase = 'discovery';
+            const phases = ['mcp_discovery', 'target-analysis', 'ai-checks'];
+            let highestPhase = 'mcp_discovery';
             
             for (const check of checks) {
                 if (check.status === 'running' || check.status === 'completed') {
@@ -596,7 +596,7 @@
                         // Fallback: infer from check name
                         const name = check.name.toLowerCase();
                         if (name.includes('dns') || name.includes('network_service_probe')) {
-                            checkPhase = 'discovery';
+                            checkPhase = 'mcp_discovery';
                         } else if (name.includes('header') || name.includes('robot') || name.includes('path') || name.includes('web_cors') || name.includes('openapi') || name.includes('fingerprint') || name.includes('error') || name.includes('model_info')) {
                             checkPhase = 'target-analysis';
                         } else {
@@ -618,7 +618,7 @@
         }
 
         function updatePhaseIndicators(currentPhase, checks) {
-            const phases = ['discovery', 'target-analysis', 'ai-checks'];
+            const phases = ['mcp_discovery', 'target-analysis', 'ai-checks'];
             const currentIndex = phases.indexOf(currentPhase);
             
             // Check if scan is complete (all checks done)
@@ -855,7 +855,7 @@
             document.getElementById('action-bar').style.display = 'flex';
             
             // Mark all phases as complete
-            ['discovery', 'target-analysis', 'ai-checks'].forEach(phase => {
+            ['mcp_discovery', 'target-analysis', 'ai-checks'].forEach(phase => {
                 const el = document.getElementById(`phase-${phase}`);
                 if (el) {
                     el.classList.remove('active');

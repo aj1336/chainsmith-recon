@@ -52,32 +52,32 @@ References:
 from app.checks.base import BaseCheck
 
 # Phase 9 Wave 1
-from app.checks.mcp.auth_check import MCPAuthCheck
-from app.checks.mcp.discovery import MCPDiscoveryCheck
-from app.checks.mcp.notification_injection import MCPNotificationInjectionCheck
+from app.checks.mcp.mcp_auth_check import MCPAuthCheck
+from app.checks.mcp.mcp_discovery import MCPDiscoveryCheck
+from app.checks.mcp.mcp_notification_injection import MCPNotificationInjectionCheck
 
 # Phase 9 Wave 4
-from app.checks.mcp.prompt_injection import MCPPromptInjectionCheck
-from app.checks.mcp.protocol_version import MCPProtocolVersionCheck
-from app.checks.mcp.resource_traversal import MCPResourceTraversalCheck
+from app.checks.mcp.mcp_prompt_injection import MCPPromptInjectionCheck
+from app.checks.mcp.mcp_protocol_version import MCPProtocolVersionCheck
+from app.checks.mcp.mcp_resource_traversal import MCPResourceTraversalCheck
 
 # Phase 9 Wave 5
-from app.checks.mcp.sampling_abuse import MCPSamplingAbuseCheck
+from app.checks.mcp.mcp_sampling_abuse import MCPSamplingAbuseCheck
 
 # Phase 9 Wave 2
-from app.checks.mcp.schema_leakage import ToolSchemaLeakageCheck
-from app.checks.mcp.server_fingerprint import MCPServerFingerprintCheck
-from app.checks.mcp.shadow_tool_detection import ShadowToolDetectionCheck
-from app.checks.mcp.template_injection import ResourceTemplateInjectionCheck
-from app.checks.mcp.tool_chain_analysis import ToolChainAnalysisCheck
-from app.checks.mcp.tool_enumeration import MCPToolEnumerationCheck
+from app.checks.mcp.mcp_schema_leakage import ToolSchemaLeakageCheck
+from app.checks.mcp.mcp_server_fingerprint import MCPServerFingerprintCheck
+from app.checks.mcp.mcp_shadow_tool_detection import ShadowToolDetectionCheck
+from app.checks.mcp.mcp_template_injection import ResourceTemplateInjectionCheck
+from app.checks.mcp.mcp_tool_chain_analysis import ToolChainAnalysisCheck
+from app.checks.mcp.mcp_tool_enumeration import MCPToolEnumerationCheck
 
 # Phase 9 Wave 3
-from app.checks.mcp.tool_invocation import MCPToolInvocationCheck
-from app.checks.mcp.tool_rate_limit import ToolRateLimitCheck
-from app.checks.mcp.transport_security import TransportSecurityCheck
-from app.checks.mcp.undeclared_capabilities import UndeclaredCapabilityCheck
-from app.checks.mcp.websocket_transport import WebSocketTransportCheck
+from app.checks.mcp.mcp_tool_invocation import MCPToolInvocationCheck
+from app.checks.mcp.mcp_tool_rate_limit import ToolRateLimitCheck
+from app.checks.mcp.mcp_transport_security import TransportSecurityCheck
+from app.checks.mcp.mcp_undeclared_capabilities import UndeclaredCapabilityCheck
+from app.checks.mcp.mcp_websocket_transport import WebSocketTransportCheck
 
 __all__ = [
     "MCPDiscoveryCheck",

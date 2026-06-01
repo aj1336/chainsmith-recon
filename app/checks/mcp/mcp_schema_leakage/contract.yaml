@@ -1,0 +1,31 @@
+id: 46382b48-e11a-456b-9fa6-76ccb07cafdb
+name: mcp_schema_leakage
+type: check
+description: Analyze MCP tool schemas for sensitive information leakage
+entry: check.py:ToolSchemaLeakageCheck
+suite: mcp
+depends_on:
+- output_name: mcp_tools
+  operator: truthy
+produces:
+- mcp_schema_leaks
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- schema analysis
+- information disclosure
+- reconnaissance
+references:
+- OWASP LLM Top 10 - LLM07 Insecure Plugin Design
+- CWE-200 Exposure of Sensitive Information
+reason: Tool schemas may reveal internal infrastructure details useful for targeted
+  attacks

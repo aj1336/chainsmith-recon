@@ -1,0 +1,32 @@
+id: c2d91274-163c-4c31-b844-3362c2694fb5
+name: mcp_tool_chain_analysis
+type: check
+description: Analyze MCP tools for dangerous capability combinations
+entry: check.py:ToolChainAnalysisCheck
+suite: mcp
+depends_on:
+- output_name: mcp_tools
+  operator: truthy
+produces:
+- mcp_dangerous_chains
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+- filesystem
+techniques:
+- capability mapping
+- attack chain analysis
+- risk assessment
+references:
+- OWASP LLM Top 10 - LLM07 Insecure Plugin Design
+- MITRE ATLAS - AML.T0051 LLM Plugin Compromise
+reason: Individual tools may be low risk, but combinations can enable full attack
+  chains (read + exfil = data breach)
