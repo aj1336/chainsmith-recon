@@ -1,0 +1,30 @@
+id: 6d8b5ff6-6c66-47f0-b12f-38a249271f00
+name: ai_function_calling_abuse
+type: check
+description: Test discovered tools for direct invocation, parameter injection, and
+  permission escalation
+entry: check.py:FunctionCallingAbuseCheck
+suite: ai
+depends_on:
+- output_name: chat_endpoints
+  operator: truthy
+- output_name: discovered_tools
+  operator: truthy
+produces:
+- function_abuse_results
+intrusive: true
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- tool abuse
+- parameter injection
+- privilege escalation
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- OWASP LLM Top 10 - LLM07 Insecure Plugin Design
+reason: Tools often execute with the AI service's permissions rather than the user's

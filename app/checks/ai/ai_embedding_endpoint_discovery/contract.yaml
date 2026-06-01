@@ -1,0 +1,30 @@
+id: ca206de9-fe2e-4576-92aa-d61a5659479f
+name: ai_embedding_endpoint_discovery
+type: check
+description: Find embedding and vector endpoints on AI services
+entry: check.py:EmbeddingEndpointCheck
+suite: ai
+depends_on:
+- output_name: services
+  operator: truthy
+- output_name: services_probed
+  operator: truthy
+produces:
+- embedding_endpoints
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- endpoint discovery
+- embedding extraction
+references:
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: Embedding endpoints may leak training data or enable inference attacks

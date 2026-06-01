@@ -1,0 +1,26 @@
+id: b0acb458-bba6-444e-a997-72802925771a
+name: ai_auth_bypass
+type: check
+description: Test AI endpoints with various auth states to detect bypass vulnerabilities
+entry: check.py:AuthBypassCheck
+suite: ai
+depends_on:
+- output_name: chat_endpoints
+  operator: truthy
+produces:
+- auth_status
+intrusive: true
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- auth bypass
+- credential testing
+references:
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+- OWASP API Security Top 10 - API2 Broken Authentication
+reason: Many internal AI services have no auth or accept any key

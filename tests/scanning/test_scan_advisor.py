@@ -190,41 +190,41 @@ class TestFollowUpSuggestions:
     def test_suggests_followup_when_trigger_has_observations(self):
         """When llm_endpoint_discovery has observations and prompt_leakage didn't run."""
         advisor = _make_advisor(
-            completed={"llm_endpoint_discovery"},
-            all_check_names={"llm_endpoint_discovery", "prompt_leakage"},
-            observations=[{"check_name": "llm_endpoint_discovery", "title": "Found LLM"}],
+            completed={"ai_llm_endpoint_discovery"},
+            all_check_names={"ai_llm_endpoint_discovery", "ai_prompt_leakage"},
+            observations=[{"check_name": "ai_llm_endpoint_discovery", "title": "Found LLM"}],
             check_metadata={
-                "prompt_leakage": {"conditions": ["chat_endpoints truthy"], "produces": []},
+                "ai_prompt_leakage": {"conditions": ["chat_endpoints truthy"], "produces": []},
             },
         )
         recs = advisor.analyze()
-        followup_recs = [r for r in recs if r.check_name == "prompt_leakage"]
+        followup_recs = [r for r in recs if r.check_name == "ai_prompt_leakage"]
         assert len(followup_recs) >= 1
 
     def test_no_followup_when_already_ran(self):
         """Don't suggest a check that already ran."""
         advisor = _make_advisor(
-            completed={"llm_endpoint_discovery", "prompt_leakage"},
-            all_check_names={"llm_endpoint_discovery", "prompt_leakage"},
-            observations=[{"check_name": "llm_endpoint_discovery", "title": "Found LLM"}],
+            completed={"ai_llm_endpoint_discovery", "ai_prompt_leakage"},
+            all_check_names={"ai_llm_endpoint_discovery", "ai_prompt_leakage"},
+            observations=[{"check_name": "ai_llm_endpoint_discovery", "title": "Found LLM"}],
             check_metadata={},
         )
         recs = advisor.analyze()
-        followup_recs = [r for r in recs if r.check_name == "prompt_leakage"]
+        followup_recs = [r for r in recs if r.check_name == "ai_prompt_leakage"]
         assert len(followup_recs) == 0
 
     def test_no_followup_when_trigger_has_no_observations(self):
         """Don't suggest follow-ups for checks that produced no observations."""
         advisor = _make_advisor(
-            completed={"llm_endpoint_discovery"},
-            all_check_names={"llm_endpoint_discovery", "prompt_leakage"},
+            completed={"ai_llm_endpoint_discovery"},
+            all_check_names={"ai_llm_endpoint_discovery", "ai_prompt_leakage"},
             observations=[],  # no observations
             check_metadata={
-                "prompt_leakage": {"conditions": ["chat_endpoints truthy"], "produces": []},
+                "ai_prompt_leakage": {"conditions": ["chat_endpoints truthy"], "produces": []},
             },
         )
         recs = advisor.analyze()
-        followup_recs = [r for r in recs if r.check_name == "prompt_leakage"]
+        followup_recs = [r for r in recs if r.check_name == "ai_prompt_leakage"]
         # May still appear from gap_analysis but NOT from follow-up
         for r in followup_recs:
             assert r.category != "follow_up"
@@ -240,7 +240,7 @@ class TestCoverageCrossReference:
         """A suite with available checks but none ran gets flagged."""
         advisor = _make_advisor(
             completed={"network_dns_enumeration"},
-            all_check_names={"network_dns_enumeration", "llm_endpoint_discovery"},
+            all_check_names={"network_dns_enumeration", "ai_llm_endpoint_discovery"},
             check_metadata={},
         )
         recs = advisor.analyze()
@@ -322,14 +322,14 @@ class TestDeduplication:
         """If multiple rules produce recommendations for the same check, keep first."""
         advisor = _make_advisor(
             completed=set(),
-            failed={"prompt_leakage"},
-            all_check_names={"llm_endpoint_discovery", "prompt_leakage"},
-            observations=[{"check_name": "llm_endpoint_discovery", "title": "Found LLM"}],
+            failed={"ai_prompt_leakage"},
+            all_check_names={"ai_llm_endpoint_discovery", "ai_prompt_leakage"},
+            observations=[{"check_name": "ai_llm_endpoint_discovery", "title": "Found LLM"}],
             check_metadata={
-                "prompt_leakage": {"conditions": ["chat_endpoints truthy"], "produces": []},
+                "ai_prompt_leakage": {"conditions": ["chat_endpoints truthy"], "produces": []},
             },
         )
         recs = advisor.analyze()
-        prompt_recs = [r for r in recs if r.check_name == "prompt_leakage"]
+        prompt_recs = [r for r in recs if r.check_name == "ai_prompt_leakage"]
         # Should be exactly 1 after dedup
         assert len(prompt_recs) == 1

@@ -1,0 +1,27 @@
+id: 92318672-83c7-497b-8139-0eb8b62954ff
+name: ai_adversarial_input
+type: check
+description: Test input handling with unicode homoglyphs, zero-width chars, and adversarial
+  formatting
+entry: check.py:AdversarialInputCheck
+suite: ai
+depends_on:
+- output_name: chat_endpoints
+  operator: truthy
+produces:
+- adversarial_input_results
+intrusive: false
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- adversarial input
+- unicode abuse
+- input sanitization testing
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+reason: Adversarial input formatting can bypass keyword-based filters and WAF rules

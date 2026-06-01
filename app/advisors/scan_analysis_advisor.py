@@ -77,9 +77,9 @@ FOLLOW_UP_RULES: list[dict] = [
         "confidence": "high",
     },
     {
-        "trigger_check": "llm_endpoint_discovery",
+        "trigger_check": "ai_llm_endpoint_discovery",
         "trigger_condition": "observations",
-        "suggest": "prompt_leakage",
+        "suggest": "ai_prompt_leakage",
         "reason": "LLM endpoints discovered — prompt leakage testing can extract system prompts.",
         "confidence": "high",
     },
@@ -135,7 +135,7 @@ FOLLOW_UP_RULES: list[dict] = [
     {
         "trigger_check": "content_filter",
         "trigger_condition": "observations",
-        "suggest": "jailbreak_testing",
+        "suggest": "ai_jailbreak_testing",
         "reason": "Content filter weaknesses detected — jailbreak testing may bypass them entirely.",
         "confidence": "high",
     },

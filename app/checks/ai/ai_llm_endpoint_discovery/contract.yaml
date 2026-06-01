@@ -1,0 +1,32 @@
+id: 428f1328-f6c7-470b-8f33-f194dee2008e
+name: ai_llm_endpoint_discovery
+type: check
+description: Find chat and completion endpoints on AI services
+entry: check.py:LLMEndpointCheck
+suite: ai
+depends_on:
+- output_name: services
+  operator: truthy
+- output_name: services_probed
+  operator: truthy
+produces:
+- chat_endpoints
+- completion_endpoints
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- endpoint discovery
+- API enumeration
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+reason: Chat/completion endpoints are the primary interface for prompt injection and
+  other AI attacks

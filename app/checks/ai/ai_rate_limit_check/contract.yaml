@@ -1,0 +1,26 @@
+id: d6b82de8-276f-4b84-b0b0-c713aac389a7
+name: ai_rate_limit_check
+type: check
+description: Detect rate limiting thresholds and bypass opportunities
+entry: check.py:RateLimitCheck
+suite: ai
+depends_on:
+- output_name: chat_endpoints
+  operator: truthy
+produces:
+- rate_limit_info
+intrusive: true
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- rate limit testing
+- resource exhaustion
+- bypass techniques
+references:
+- OWASP API4:2023 - Unrestricted Resource Consumption
+reason: Understanding rate limits helps plan attacks and identify DoS vectors

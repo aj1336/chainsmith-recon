@@ -1,0 +1,29 @@
+id: b0d0e723-9ccd-4aff-9fdd-ed5f34209046
+name: ai_api_parameter_injection
+type: check
+description: Test if extra API parameters (temperature, tools, logprobs, user) are
+  accepted
+entry: check.py:APIParameterInjectionCheck
+suite: ai
+depends_on:
+- output_name: chat_endpoints
+  operator: truthy
+produces:
+- accepted_params
+intrusive: true
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- mass assignment
+- parameter injection
+- proxy bypass
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- OWASP API Security Top 10 - API6 Mass Assignment
+reason: Proxy/gateway setups often forward the full request body, enabling parameter
+  manipulation

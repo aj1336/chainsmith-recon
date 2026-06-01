@@ -1,0 +1,28 @@
+id: 81eb7dfb-ff3c-4dbc-8ab2-9532e5db97cc
+name: ai_tool_discovery
+type: check
+description: Probe chatbot to discover available tools, functions, and data access
+entry: check.py:ToolDiscoveryCheck
+suite: ai
+depends_on:
+- output_name: chat_endpoints
+  operator: truthy
+produces:
+- discovered_tools
+- chatbot_capabilities
+intrusive: true
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- capability enumeration
+- social engineering
+- tool discovery
+references:
+- OWASP LLM Top 10 - LLM07 Insecure Plugin Design
+reason: Understanding chatbot capabilities reveals attack surface for tool abuse and
+  data access

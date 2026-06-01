@@ -209,7 +209,11 @@ class TestListChecksCommand:
                     "description": "Service probe",
                 },
                 {"name": "web_header_analysis", "suite": "web", "description": "Header check"},
-                {"name": "llm_endpoint_discovery", "suite": "ai", "description": "LLM discovery"},
+                {
+                    "name": "ai_llm_endpoint_discovery",
+                    "suite": "ai",
+                    "description": "LLM discovery",
+                },
             ],
             "simulated": False,
         }

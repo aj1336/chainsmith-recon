@@ -203,7 +203,7 @@ CHAIN_PATTERNS = [
         "description": "Chat/AI endpoints combined with API documentation suggest prompt injection opportunities",
         "severity": "high",
         "required_observations": [
-            {"check_name": "llm_endpoint_discovery"},
+            {"check_name": "ai_llm_endpoint_discovery"},
             {"check_name": "web_openapi_discovery"},
         ],
         "exploitation_steps": [
@@ -220,7 +220,7 @@ CHAIN_PATTERNS = [
         "description": "Model information endpoints reveal architecture details for targeted attacks",
         "severity": "medium",
         "required_observations": [
-            {"check_name": "model_info_check"},
+            {"check_name": "ai_model_info_check"},
             {"check_name": "ai_framework_fingerprint"},
         ],
         "exploitation_steps": [
@@ -252,7 +252,7 @@ CHAIN_PATTERNS = [
         "title": "Embedding Endpoint Data Exposure",
         "description": "Embedding endpoints may enable training data extraction or inference attacks",
         "severity": "medium",
-        "required_observations": [{"check_name": "embedding_endpoint_discovery"}],
+        "required_observations": [{"check_name": "ai_embedding_endpoint_discovery"}],
         "exploitation_steps": [
             "Test embedding endpoint for membership inference",
             "Attempt to extract training data patterns",
@@ -648,9 +648,9 @@ CHAIN_PATTERNS = [
         "description": "System prompt extracted and tools discovered enables fully informed attacks against the LLM service",
         "severity": "critical",
         "required_observations": [
-            {"check_name": "llm_endpoint_discovery"},
-            {"check_name": "prompt_leakage"},
-            {"check_name": "tool_discovery"},
+            {"check_name": "ai_llm_endpoint_discovery"},
+            {"check_name": "ai_prompt_leakage"},
+            {"check_name": "ai_tool_discovery"},
         ],
         "exploitation_steps": [
             "Access discovered LLM chat/completion endpoints",
@@ -666,7 +666,7 @@ CHAIN_PATTERNS = [
         "description": "No authentication on AI endpoints combined with RAG pipeline enables unauthenticated document theft",
         "severity": "critical",
         "required_observations": [
-            {"check_name": "auth_bypass"},
+            {"check_name": "ai_auth_bypass"},
             {"check_name": "rag_discovery"},
             {"check_name": "rag_document_exfiltration"},
         ],
@@ -684,9 +684,9 @@ CHAIN_PATTERNS = [
         "description": "Filters characterized, jailbreaks confirmed, and streaming bypasses content filtering",
         "severity": "high",
         "required_observations": [
-            {"check_name": "content_filter_check"},
-            {"check_name": "jailbreak_testing"},
-            {"check_name": "streaming_analysis"},
+            {"check_name": "ai_content_filter_check"},
+            {"check_name": "ai_jailbreak_testing"},
+            {"check_name": "ai_streaming_analysis"},
         ],
         "exploitation_steps": [
             "Map content filter rules and blocked categories from detection results",
@@ -703,7 +703,7 @@ CHAIN_PATTERNS = [
         "severity": "high",
         "required_observations": [
             {"check_name": "web_cors"},
-            {"check_name": "llm_endpoint_discovery"},
+            {"check_name": "ai_llm_endpoint_discovery"},
         ],
         "exploitation_steps": [
             "Confirm permissive CORS configuration on AI service endpoints",
@@ -753,8 +753,8 @@ CHAIN_PATTERNS = [
         "description": "Rate limit bypass combined with expensive completions enables uncapped cost generation",
         "severity": "high",
         "required_observations": [
-            {"check_name": "rate_limit_check"},
-            {"check_name": "token_cost_exhaustion"},
+            {"check_name": "ai_rate_limit_check"},
+            {"check_name": "ai_token_cost_exhaustion"},
         ],
         "exploitation_steps": [
             "Identify rate limiting mechanisms and any discovered bypass techniques",

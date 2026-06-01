@@ -1,0 +1,26 @@
+id: cdf992d0-7128-4fe1-a164-3a8c5aec43b1
+name: ai_model_behavior_fingerprint
+type: check
+description: Identify the actual underlying model from response patterns and behavioral
+  signatures
+entry: check.py:ModelBehaviorFingerprintCheck
+suite: ai
+depends_on:
+- output_name: chat_endpoints
+  operator: truthy
+produces:
+- model_identity
+intrusive: false
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- model fingerprinting
+- behavioral analysis
+references:
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: Knowing the exact model helps prioritize attack techniques and reveals misrepresentation

@@ -1,0 +1,27 @@
+id: cf601334-8e9e-49e0-be60-d361fab77fed
+name: ai_system_prompt_injection
+type: check
+description: Test if client-supplied system messages override service configuration
+entry: check.py:SystemPromptInjectionCheck
+suite: ai
+depends_on:
+- output_name: chat_endpoints
+  operator: truthy
+produces:
+- system_inject_results
+intrusive: true
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- system prompt injection
+- proxy bypass
+- instruction override
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+reason: AI proxy/gateway setups often forward client system messages to the provider,
+  allowing instruction override

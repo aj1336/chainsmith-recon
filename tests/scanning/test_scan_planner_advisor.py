@@ -179,13 +179,13 @@ class TestAISuiteSuggestion:
         advisor = _make_advisor(
             in_scope=["api.example.com"],
             available_checks={
-                "llm_endpoint_discovery",
-                "prompt_leakage",
+                "ai_llm_endpoint_discovery",
+                "ai_prompt_leakage",
                 "network_dns_enumeration",
             },
             check_metadata={
-                "llm_endpoint_discovery": {"suite": "ai"},
-                "prompt_leakage": {"suite": "ai"},
+                "ai_llm_endpoint_discovery": {"suite": "ai"},
+                "ai_prompt_leakage": {"suite": "ai"},
                 "network_dns_enumeration": {"suite": "network"},
             },
         )
@@ -196,8 +196,8 @@ class TestAISuiteSuggestion:
     def test_no_suggestion_for_non_api_target(self):
         advisor = _make_advisor(
             in_scope=["www.example.com"],
-            available_checks={"llm_endpoint_discovery"},
-            check_metadata={"llm_endpoint_discovery": {"suite": "ai"}},
+            available_checks={"ai_llm_endpoint_discovery"},
+            check_metadata={"ai_llm_endpoint_discovery": {"suite": "ai"}},
         )
         recs = advisor.analyze()
         ai_recs = [r for r in recs if r.category == "check_selection"]
