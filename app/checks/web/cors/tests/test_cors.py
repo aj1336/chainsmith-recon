@@ -19,6 +19,8 @@ def sample_service():
         scheme="http",
         service_type="http",
     )
+
+
 def make_response(
     status_code: int = 200,
     headers: dict = None,
@@ -34,6 +36,8 @@ def make_response(
         elapsed_ms=50.0,
         error=error,
     )
+
+
 def mock_client(responses: list[HttpResponse] | HttpResponse):
     """Create a mock AsyncHttpClient context."""
     if not isinstance(responses, list):

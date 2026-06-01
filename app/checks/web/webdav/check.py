@@ -27,7 +27,6 @@ class WebDAVCheck(ServiceIteratingCheck):
     produces = ["webdav_observations"]
     service_types = ["http", "html", "api"]
 
-
     reason = "WebDAV write access = arbitrary file upload = likely RCE path, superseding AI-specific observations"
     references = ["OWASP WSTG-CONF-06", "CWE-284"]
     techniques = ["WebDAV method probing", "HTTP method enumeration"]

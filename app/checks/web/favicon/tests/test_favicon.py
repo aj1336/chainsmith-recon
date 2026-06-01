@@ -16,6 +16,8 @@ def service():
     return Service(
         url="http://target.com:80", host="target.com", port=80, scheme="http", service_type="http"
     )
+
+
 @pytest.fixture
 def https_service():
     return Service(
@@ -25,6 +27,8 @@ def https_service():
         scheme="https",
         service_type="http",
     )
+
+
 def resp(status_code=200, body="", headers=None, error=None, url="http://target.com:80"):
     return HttpResponse(
         url=url,
@@ -34,6 +38,8 @@ def resp(status_code=200, body="", headers=None, error=None, url="http://target.
         elapsed_ms=50.0,
         error=error,
     )
+
+
 def mock_client_multi(response_map=None, default=None):
     """Mock client that returns different responses based on URL/method."""
     if default is None:
@@ -62,6 +68,8 @@ def mock_client_multi(response_map=None, default=None):
     mock._request = AsyncMock(side_effect=lambda m, url, **kw: _lookup(m, url))
 
     return mock
+
+
 def _mock_alpn_socket(selected_protocol):
     """Create mock SSL context and socket that return the given ALPN protocol.
 

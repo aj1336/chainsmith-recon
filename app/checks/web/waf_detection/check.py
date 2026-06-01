@@ -98,7 +98,6 @@ class WAFDetectionCheck(ServiceIteratingCheck):
     produces = ["waf_detected"]
     service_types = ["http", "html", "api", "ai"]
 
-
     reason = "WAF/CDN presence affects interpretation of all downstream check results"
     references = ["OWASP WSTG-INFO-10", "CWE-693"]
     techniques = ["WAF fingerprinting", "CDN detection"]

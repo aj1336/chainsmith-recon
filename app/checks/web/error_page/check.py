@@ -100,7 +100,6 @@ class ErrorPageCheck(ServiceIteratingCheck):
     produces = ["error_page_info"]
     service_types = ["http", "html", "api"]
 
-
     reason = "Error pages reveal framework identity and debug mode, enabling targeted attacks"
     references = ["OWASP WSTG-INFO-08", "CWE-209"]
     techniques = ["error page analysis", "technology fingerprinting"]

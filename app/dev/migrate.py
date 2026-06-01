@@ -34,7 +34,12 @@ from app.dev import codemod
 from app.dev.scaffold import _TEMPLATE_DIR  # reuse the __init__ re-export template
 
 # The four tunables externalized to config.yaml.defaults and stripped from the class (§8.5).
-_CONFIG_TUNABLES = ("timeout_seconds", "requests_per_second", "retry_count", "delay_between_targets")
+_CONFIG_TUNABLES = (
+    "timeout_seconds",
+    "requests_per_second",
+    "retry_count",
+    "delay_between_targets",
+)
 
 _NETWORK_HINTS = ("AsyncHttpClient", "httpx", "requests", "aiohttp", "socket", "dns")
 _DB_HINTS = ("sqlite3", "sqlalchemy", "aiosqlite")
@@ -166,9 +171,7 @@ def collect_todos(contract: dict[str, Any]) -> list[str]:
 
 def strip_config_tunables(source_text: str) -> str:
     """Remove class-body assignments of the four externalized tunables (§8.5)."""
-    pattern = re.compile(
-        rf"^[ \t]+({'|'.join(_CONFIG_TUNABLES)})\s*[:=].*\n", re.MULTILINE
-    )
+    pattern = re.compile(rf"^[ \t]+({'|'.join(_CONFIG_TUNABLES)})\s*[:=].*\n", re.MULTILINE)
     return pattern.sub("", source_text)
 
 

@@ -103,7 +103,6 @@ class MassAssignmentCheck(ServiceIteratingCheck):
     produces = ["mass_assignment_info"]
     service_types = ["http", "api", "ai"]
 
-
     reason = "REST APIs that bind request bodies without field whitelisting allow privilege escalation and data manipulation"
     references = ["OWASP API8:2023", "CWE-915"]
     techniques = ["mass assignment testing", "API parameter tampering"]

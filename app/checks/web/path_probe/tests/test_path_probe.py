@@ -19,6 +19,8 @@ def sample_service():
         scheme="http",
         service_type="http",
     )
+
+
 def make_response(
     status_code: int = 200,
     headers: dict = None,
@@ -34,6 +36,8 @@ def make_response(
         elapsed_ms=50.0,
         error=error,
     )
+
+
 def mock_client(responses: list[HttpResponse] | HttpResponse):
     """Create a mock AsyncHttpClient context."""
     if not isinstance(responses, list):
@@ -90,7 +94,9 @@ class TestPathProbeCheckService:
             headers={"content-type": "text/html"},
         )
 
-        with patch("app.checks.web.path_probe.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.path_probe.check.AsyncHttpClient", return_value=mock_client(response)
+        ):
             result = await check.check_service(sample_service, {})
 
         accessible_observations = [f for f in result.observations if "Accessible" in f.title]
@@ -106,7 +112,9 @@ class TestPathProbeCheckService:
             headers={"content-type": "text/plain"},
         )
 
-        with patch("app.checks.web.path_probe.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.path_probe.check.AsyncHttpClient", return_value=mock_client(response)
+        ):
             result = await check.check_service(sample_service, {})
 
         assert len(result.observations) == 1
@@ -122,7 +130,9 @@ class TestPathProbeCheckService:
             headers={"content-type": "text/html"},
         )
 
-        with patch("app.checks.web.path_probe.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.path_probe.check.AsyncHttpClient", return_value=mock_client(response)
+        ):
             result = await check.check_service(sample_service, {})
 
         assert len(result.observations) == 1
@@ -135,7 +145,9 @@ class TestPathProbeCheckService:
 
         response = make_response(status_code=403)
 
-        with patch("app.checks.web.path_probe.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.path_probe.check.AsyncHttpClient", return_value=mock_client(response)
+        ):
             result = await check.check_service(sample_service, {})
 
         forbidden_observations = [f for f in result.observations if "Protected" in f.title]
@@ -151,7 +163,9 @@ class TestPathProbeCheckService:
             headers={"location": "/login"},
         )
 
-        with patch("app.checks.web.path_probe.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.path_probe.check.AsyncHttpClient", return_value=mock_client(response)
+        ):
             result = await check.check_service(sample_service, {})
 
         redirect_observations = [f for f in result.observations if "Redirect" in f.title]

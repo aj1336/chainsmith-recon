@@ -22,7 +22,6 @@ class RobotsTxtCheck(ServiceIteratingCheck):
     produces = ["robots_paths"]
     service_types = ["http", "html", "api"]
 
-
     reason = "robots.txt often reveals hidden paths that admins want to keep from search engines"
     references = ["OWASP WSTG-INFO-03", "RFC 9309"]
     techniques = ["passive reconnaissance", "path discovery"]

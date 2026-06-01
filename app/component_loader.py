@@ -106,9 +106,7 @@ def _required_arg_names(func: ast.FunctionDef) -> list[str]:
     n_required_positional = len(positional) - len(a.defaults)
     required = [p.arg for p in positional[:n_required_positional] if p.arg != "self"]
     # keyword-only without a default are also required for a bare cls()
-    required += [
-        p.arg for p, d in zip(a.kwonlyargs, a.kw_defaults, strict=False) if d is None
-    ]
+    required += [p.arg for p, d in zip(a.kwonlyargs, a.kw_defaults, strict=False) if d is None]
     return required
 
 
@@ -139,9 +137,7 @@ def verify_contracts(root: Path, component_type: ComponentType = "check") -> lis
             violations.append(Violation(comp_dir, "yaml-parse", f"contract.yaml unparseable: {e}"))
             continue
         if not isinstance(raw, dict):
-            violations.append(
-                Violation(comp_dir, "yaml-parse", "contract.yaml is not a mapping")
-            )
+            violations.append(Violation(comp_dir, "yaml-parse", "contract.yaml is not a mapping"))
             continue
         model = None
         try:
@@ -289,7 +285,9 @@ def discover_components(root: Path, component_type: ComponentType = "check") -> 
         # config.yaml (per-component) — disabled components are skipped (§6).
         cfg_path = comp_dir / "config.yaml"
         if cfg_path.exists():
-            comp_cfg = ComponentConfig(**(yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}))
+            comp_cfg = ComponentConfig(
+                **(yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {})
+            )
         else:
             comp_cfg = ComponentConfig()
         if not comp_cfg.enabled:

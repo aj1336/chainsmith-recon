@@ -47,7 +47,6 @@ class RedirectChainCheck(ServiceIteratingCheck):
     produces = ["redirect_info"]
     service_types = ["http", "html", "api"]
 
-
     reason = (
         "Missing HTTPS redirects expose traffic to interception; open redirects enable phishing"
     )

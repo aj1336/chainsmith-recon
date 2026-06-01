@@ -20,6 +20,8 @@ def sample_service():
         scheme="http",
         service_type="http",
     )
+
+
 def make_response(
     status_code: int = 200,
     headers: dict = None,
@@ -35,6 +37,8 @@ def make_response(
         elapsed_ms=50.0,
         error=error,
     )
+
+
 def mock_client(responses: list[HttpResponse] | HttpResponse):
     """Create a mock AsyncHttpClient context."""
     if not isinstance(responses, list):
@@ -95,7 +99,10 @@ class TestOpenAPICheckService:
             body=json.dumps(spec),
         )
 
-        with patch("app.checks.web.openapi_discovery.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.openapi_discovery.check.AsyncHttpClient",
+            return_value=mock_client(response),
+        ):
             result = await check.check_service(sample_service, {})
 
         spec_observations = [f for f in result.observations if "OpenAPI" in f.title]
@@ -122,7 +129,10 @@ class TestOpenAPICheckService:
             body=json.dumps(spec),
         )
 
-        with patch("app.checks.web.openapi_discovery.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.openapi_discovery.check.AsyncHttpClient",
+            return_value=mock_client(response),
+        ):
             result = await check.check_service(sample_service, {})
 
         assert len(result.observations) == 1
@@ -150,7 +160,10 @@ class TestOpenAPICheckService:
             body=json.dumps(spec),
         )
 
-        with patch("app.checks.web.openapi_discovery.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.openapi_discovery.check.AsyncHttpClient",
+            return_value=mock_client(response),
+        ):
             result = await check.check_service(sample_service, {})
 
         assert len(result.observations) == 1
@@ -190,7 +203,10 @@ class TestOpenAPICheckService:
             body=html_body,
         )
 
-        with patch("app.checks.web.openapi_discovery.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.openapi_discovery.check.AsyncHttpClient",
+            return_value=mock_client(response),
+        ):
             result = await check.check_service(sample_service, {})
 
         ui_observations = [f for f in result.observations if "UI" in f.title]
@@ -218,7 +234,10 @@ class TestOpenAPICheckService:
             body=non_spec_body,
         )
 
-        with patch("app.checks.web.openapi_discovery.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.openapi_discovery.check.AsyncHttpClient",
+            return_value=mock_client(response),
+        ):
             result = await check.check_service(sample_service, {})
 
         assert len(result.observations) == 0
@@ -238,7 +257,10 @@ class TestOpenAPICheckService:
             body=json.dumps(spec),
         )
 
-        with patch("app.checks.web.openapi_discovery.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.openapi_discovery.check.AsyncHttpClient",
+            return_value=mock_client(response),
+        ):
             result = await check.check_service(sample_service, {})
 
         key = f"openapi_{sample_service.port}"

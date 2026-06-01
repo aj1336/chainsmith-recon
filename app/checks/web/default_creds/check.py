@@ -27,7 +27,6 @@ class DefaultCredsCheck(ServiceIteratingCheck):
     produces = ["default_creds_observations"]
     service_types = ["http", "html", "api"]
 
-
     reason = "Admin panels with default credentials supersede all AI-specific observations on the same host"
     references = ["OWASP WSTG-ATHN-02", "CWE-798", "CWE-1392"]
     techniques = ["default credential testing", "authentication bypass"]

@@ -2311,9 +2311,15 @@ def dev_verify_contracts(root: str, component_type: str):
 
 
 @dev_group.command("diff-registry")
-@click.option("--save-baseline", "save_baseline", type=click.Path(), help="Dump live registry to JSON")
-@click.option("--compare", "compare_to", type=click.Path(exists=True), help="Diff current vs baseline")
-@click.option("--rename-map", "rename_map", type=click.Path(exists=True), help="Category-A rename map (YAML)")
+@click.option(
+    "--save-baseline", "save_baseline", type=click.Path(), help="Dump live registry to JSON"
+)
+@click.option(
+    "--compare", "compare_to", type=click.Path(exists=True), help="Diff current vs baseline"
+)
+@click.option(
+    "--rename-map", "rename_map", type=click.Path(exists=True), help="Category-A rename map (YAML)"
+)
 def dev_diff_registry(save_baseline: str | None, compare_to: str | None, rename_map: str | None):
     """Snapshot or diff the live check registry (§8.1)."""
     _require_source_tree()
@@ -2324,9 +2330,7 @@ def dev_diff_registry(save_baseline: str | None, compare_to: str | None, rename_
         click.echo(click.style(f"Saved baseline of {count} checks → {save_baseline}", fg="green"))
         return
     if compare_to:
-        report = registry_diff.compare(
-            Path(compare_to), Path(rename_map) if rename_map else None
-        )
+        report = registry_diff.compare(Path(compare_to), Path(rename_map) if rename_map else None)
         if report["clean"]:
             click.echo(
                 click.style(
@@ -2372,7 +2376,9 @@ def _load_rename_map(path: str | None) -> dict:
 
 @dev_group.command("migrate-check")
 @click.argument("path", type=click.Path(exists=True))
-@click.option("--rename-map", "rename_map", type=click.Path(exists=True), help="Category-A rename map")
+@click.option(
+    "--rename-map", "rename_map", type=click.Path(exists=True), help="Category-A rename map"
+)
 @click.option("--dry-run", is_flag=True, help="Report actions without writing")
 def dev_migrate_check(path: str, rename_map: str | None, dry_run: bool):
     """Migrate a flat check file into a component folder (§8.1)."""
@@ -2385,7 +2391,9 @@ def dev_migrate_check(path: str, rename_map: str | None, dry_run: bool):
 
 @dev_group.command("migrate-suite")
 @click.argument("suite")
-@click.option("--rename-map", "rename_map", type=click.Path(exists=True), help="Category-A rename map")
+@click.option(
+    "--rename-map", "rename_map", type=click.Path(exists=True), help="Category-A rename map"
+)
 @click.option("--dry-run", is_flag=True, help="Report actions without writing")
 def dev_migrate_suite(suite: str, rename_map: str | None, dry_run: bool):
     """Migrate every flat check in a suite (§8.1 driver)."""
@@ -2402,10 +2410,24 @@ def dev_migrate_suite(suite: str, rename_map: str | None, dry_run: bool):
 @click.option("--server", default="127.0.0.1:8000", help="Running server host:port")
 @click.option("--suite", "suites", multiple=True, help="Limit to suite(s)")
 @click.option("--parallel", is_flag=True, help="Run checks in parallel within phases")
-@click.option("--save-baseline", "save_baseline", type=click.Path(), help="Save observation snapshot")
-@click.option("--compare", "compare_to", type=click.Path(exists=True), help="Diff vs a saved snapshot")
-@click.option("--rename-map", "rename_map", type=click.Path(exists=True), help="Category-A rename map (compare)")
-@click.option("--ignore-check", "ignore_checks", multiple=True, help="Drop these checks from the diff (noise floor)")
+@click.option(
+    "--save-baseline", "save_baseline", type=click.Path(), help="Save observation snapshot"
+)
+@click.option(
+    "--compare", "compare_to", type=click.Path(exists=True), help="Diff vs a saved snapshot"
+)
+@click.option(
+    "--rename-map",
+    "rename_map",
+    type=click.Path(exists=True),
+    help="Category-A rename map (compare)",
+)
+@click.option(
+    "--ignore-check",
+    "ignore_checks",
+    multiple=True,
+    help="Drop these checks from the diff (noise floor)",
+)
 def dev_scan_baseline(
     target: str,
     scenario: str,

@@ -34,7 +34,6 @@ class HeaderAnalysisCheck(ServiceIteratingCheck):
     produces = ["header_observations"]
     service_types = ["http", "html", "api", "ai"]
 
-
     reason = "HTTP headers often reveal server software, frameworks, and security misconfigurations"
     references = ["OWASP WSTG-INFO-02", "CWE-200", "CIS Benchmarks", "OWASP Secure Headers Project"]
     techniques = ["banner grabbing", "fingerprinting", "security header analysis"]

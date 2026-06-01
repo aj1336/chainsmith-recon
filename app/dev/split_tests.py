@@ -120,11 +120,7 @@ def plan_split(source: Path, checks_root: Path = Path("app/checks")) -> SplitPla
 
 
 def apply_split(plan: SplitPlan, dry_run: bool = False) -> SplitPlan:
-    header = (
-        '"""Co-located tests (Phase 56 §3) — split from '
-        f"{plan.source.name}."
-        '"""\n\n'
-    )
+    header = f'"""Co-located tests (Phase 56 §3) — split from {plan.source.name}."""\n\n'
     for folder, classes in plan.per_check.items():
         tests_dir = folder / "tests"
         out = tests_dir / f"test_{folder.name}.py"
@@ -157,5 +153,7 @@ def apply_split(plan: SplitPlan, dry_run: bool = False) -> SplitPlan:
     return plan
 
 
-def split_test_file(source: Path, checks_root: Path = Path("app/checks"), dry_run: bool = False) -> SplitPlan:
+def split_test_file(
+    source: Path, checks_root: Path = Path("app/checks"), dry_run: bool = False
+) -> SplitPlan:
     return apply_split(plan_split(source, checks_root), dry_run=dry_run)

@@ -56,7 +56,6 @@ class SRICheck(ServiceIteratingCheck):
     produces = ["sri_info"]
     service_types = ["http", "html"]
 
-
     reason = (
         "External scripts without SRI are vulnerable to CDN compromise and supply-chain attacks"
     )

@@ -23,7 +23,6 @@ class CorsCheck(ServiceIteratingCheck):
     produces = ["cors_observations"]
     service_types = ["http", "html", "api", "ai"]
 
-
     reason = "CORS misconfigurations can allow malicious sites to steal data via a user's browser"
     references = ["OWASP WSTG-CLNT-07", "CWE-942", "PortSwigger CORS"]
     techniques = ["configuration testing", "CORS exploitation"]

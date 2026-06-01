@@ -43,13 +43,16 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest tests/ -v --tb=short --color=yes
+          # No positional path: honors pyproject testpaths = ["tests", "app/checks"]
+          # so the Phase-56 co-located component tests are collected (else ~221 skip).
+          pytest -v --tb=short --color=yes
 
       - name: Run tests with coverage
         if: matrix.python-version == '3.12'
         run: |
           pip install pytest-cov
-          pytest tests/ --cov=app --cov-report=xml --cov-report=term-missing
+          # No positional path (see above): testpaths covers tests + app/checks.
+          pytest --cov=app --cov-report=xml --cov-report=term-missing
 
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.12'

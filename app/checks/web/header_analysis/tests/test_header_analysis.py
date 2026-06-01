@@ -19,6 +19,8 @@ def sample_service():
         scheme="http",
         service_type="http",
     )
+
+
 def make_response(
     status_code: int = 200,
     headers: dict = None,
@@ -34,6 +36,8 @@ def make_response(
         elapsed_ms=50.0,
         error=error,
     )
+
+
 def mock_client(responses: list[HttpResponse] | HttpResponse):
     """Create a mock AsyncHttpClient context."""
     if not isinstance(responses, list):
@@ -86,7 +90,10 @@ class TestHeaderAnalysisCheckService:
         check = HeaderAnalysisCheck()
         response = make_response(headers={"content-type": "text/html"})
 
-        with patch("app.checks.web.header_analysis.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.header_analysis.check.AsyncHttpClient",
+            return_value=mock_client(response),
+        ):
             result = await check.check_service(sample_service, {})
 
         missing_observations = [f for f in result.observations if "Missing security" in f.title]
@@ -108,7 +115,10 @@ class TestHeaderAnalysisCheckService:
             }
         )
 
-        with patch("app.checks.web.header_analysis.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.header_analysis.check.AsyncHttpClient",
+            return_value=mock_client(response),
+        ):
             result = await check.check_service(sample_service, {})
 
         missing_observations = [f for f in result.observations if "Missing security" in f.title]
@@ -124,7 +134,10 @@ class TestHeaderAnalysisCheckService:
             }
         )
 
-        with patch("app.checks.web.header_analysis.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.header_analysis.check.AsyncHttpClient",
+            return_value=mock_client(response),
+        ):
             result = await check.check_service(sample_service, {})
 
         cors_observations = [f for f in result.observations if "CORS" in f.title]
@@ -142,7 +155,10 @@ class TestHeaderAnalysisCheckService:
             }
         )
 
-        with patch("app.checks.web.header_analysis.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.header_analysis.check.AsyncHttpClient",
+            return_value=mock_client(response),
+        ):
             result = await check.check_service(sample_service, {})
 
         cors_observations = [f for f in result.observations if "CORS" in f.title]
@@ -159,7 +175,10 @@ class TestHeaderAnalysisCheckService:
             }
         )
 
-        with patch("app.checks.web.header_analysis.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.header_analysis.check.AsyncHttpClient",
+            return_value=mock_client(response),
+        ):
             result = await check.check_service(sample_service, {})
 
         server_observations = [f for f in result.observations if "Server version" in f.title]
@@ -170,7 +189,10 @@ class TestHeaderAnalysisCheckService:
         check = HeaderAnalysisCheck()
         response = make_response(error="Connection refused")
 
-        with patch("app.checks.web.header_analysis.check.AsyncHttpClient", return_value=mock_client(response)):
+        with patch(
+            "app.checks.web.header_analysis.check.AsyncHttpClient",
+            return_value=mock_client(response),
+        ):
             result = await check.check_service(sample_service, {})
 
         assert len(result.errors) > 0

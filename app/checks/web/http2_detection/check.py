@@ -31,7 +31,6 @@ class HTTP2DetectionCheck(ServiceIteratingCheck):
     produces = ["http_protocols"]
     service_types = ["http", "html", "api"]
 
-
     reason = (
         "Protocol detection profiles infrastructure maturity and identifies QUIC/HTTP3 endpoints"
     )

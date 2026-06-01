@@ -98,7 +98,6 @@ class SSRFIndicatorCheck(ServiceIteratingCheck):
     produces = ["ssrf_candidates"]
     service_types = ["http", "html", "api", "ai"]
 
-
     reason = (
         "AI services frequently accept URLs for document processing, creating classic SSRF vectors"
     )

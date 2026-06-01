@@ -47,7 +47,6 @@ class AuthDetectionCheck(ServiceIteratingCheck):
     produces = ["auth_mechanisms"]
     service_types = ["http", "html", "api", "ai"]
 
-
     reason = "Understanding authentication informs downstream AI/agent check interpretation"
     references = ["OWASP WSTG-ATHN-01", "CWE-287"]
     techniques = ["authentication detection", "endpoint enumeration"]

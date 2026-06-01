@@ -14,6 +14,8 @@ def service():
     return Service(
         url="http://target.com:80", host="target.com", port=80, scheme="http", service_type="http"
     )
+
+
 def resp(status_code=200, body="", headers=None, error=None):
     return HttpResponse(
         url="http://target.com:80",
@@ -23,6 +25,8 @@ def resp(status_code=200, body="", headers=None, error=None):
         elapsed_ms=50.0,
         error=error,
     )
+
+
 def mock_client_multi(response_map=None, default=None):
     """Mock client that returns different responses based on URL/method.
 
@@ -58,11 +62,15 @@ def mock_client_multi(response_map=None, default=None):
     mock._request = AsyncMock(side_effect=dispatch_request)
 
     return mock
+
+
 def _mock_preferences(intrusive_web=False):
     """Return a mock get_preferences function with the given intrusive_web setting."""
     prefs = MagicMock()
     prefs.checks.intrusive_web = intrusive_web
     return MagicMock(return_value=prefs)
+
+
 REALISTIC_GIT_CONFIG = """\
 [core]
 \trepositoryformatversion = 0
@@ -127,7 +135,8 @@ class TestWebDAVCheck:
         with (
             patch("app.preferences.get_preferences", _mock_preferences(intrusive_web=True)),
             patch(
-                "app.checks.web.webdav.check.AsyncHttpClient", return_value=mock_client_multi(responses)
+                "app.checks.web.webdav.check.AsyncHttpClient",
+                return_value=mock_client_multi(responses),
             ),
         ):
             result = await check.check_service(service, {})
@@ -150,7 +159,8 @@ class TestWebDAVCheck:
         with (
             patch("app.preferences.get_preferences", _mock_preferences(intrusive_web=True)),
             patch(
-                "app.checks.web.webdav.check.AsyncHttpClient", return_value=mock_client_multi(responses)
+                "app.checks.web.webdav.check.AsyncHttpClient",
+                return_value=mock_client_multi(responses),
             ),
         ):
             result = await check.check_service(service, {})
@@ -172,7 +182,8 @@ class TestWebDAVCheck:
         with (
             patch("app.preferences.get_preferences", _mock_preferences(intrusive_web=True)),
             patch(
-                "app.checks.web.webdav.check.AsyncHttpClient", return_value=mock_client_multi(responses)
+                "app.checks.web.webdav.check.AsyncHttpClient",
+                return_value=mock_client_multi(responses),
             ),
         ):
             result = await check.check_service(service, {})
@@ -194,7 +205,8 @@ class TestWebDAVCheck:
         with (
             patch("app.preferences.get_preferences", _mock_preferences(intrusive_web=True)),
             patch(
-                "app.checks.web.webdav.check.AsyncHttpClient", return_value=mock_client_multi(responses)
+                "app.checks.web.webdav.check.AsyncHttpClient",
+                return_value=mock_client_multi(responses),
             ),
         ):
             result = await check.check_service(service, {})

@@ -50,7 +50,9 @@ def _attr_pattern(old_dotted: str) -> re.Pattern[str]:
     return re.compile(rf"(?<![\w.]){re.escape(old_dotted)}(?=\.)")
 
 
-def rewrite_text(text: str, old_dotted: str, new_pkg_dotted: str, entry_stem: str) -> tuple[str, int]:
+def rewrite_text(
+    text: str, old_dotted: str, new_pkg_dotted: str, entry_stem: str
+) -> tuple[str, int]:
     """Rewrite one file's text. Returns (new_text, replacement_count)."""
     count = 0
     new_module_dotted = f"{new_pkg_dotted}.{entry_stem}"

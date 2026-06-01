@@ -25,7 +25,6 @@ class VCSExposureCheck(ServiceIteratingCheck):
     produces = ["vcs_observations"]
     service_types = ["http", "html", "api"]
 
-
     reason = "Exposed .git allows full source code recovery including API keys, model configs, and credentials"
     references = ["OWASP WSTG-CONF-05", "CWE-538"]
     techniques = ["VCS metadata enumeration", "source code exposure assessment"]

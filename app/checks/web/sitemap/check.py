@@ -47,7 +47,6 @@ class SitemapCheck(ServiceIteratingCheck):
     produces = ["sitemap_paths"]
     service_types = ["http", "html", "api"]
 
-
     reason = "Sitemaps reveal full URL structure including internal tools, API versioning, and AI/ML endpoints"
     references = ["OWASP WSTG-INFO-03"]
     techniques = ["passive reconnaissance", "path discovery"]

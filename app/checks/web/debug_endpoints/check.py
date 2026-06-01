@@ -24,7 +24,6 @@ class DebugEndpointCheck(ServiceIteratingCheck):
     produces = ["debug_observations"]
     service_types = ["http", "html", "api"]
 
-
     reason = "Debug endpoints frequently expose environment variables, connection strings, and internal IPs"
     references = ["OWASP WSTG-CONF-05", "CWE-215"]
     techniques = ["debug endpoint analysis", "information disclosure"]

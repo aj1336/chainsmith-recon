@@ -28,7 +28,6 @@ class HSTSPreloadCheck(ServiceIteratingCheck):
     produces = ["hsts_preload_info"]
     service_types = ["http", "html", "api"]
 
-
     reason = "Domains not on the HSTS preload list are vulnerable to SSL stripping on first visit"
     references = ["RFC 6797", "hstspreload.org"]
     techniques = ["HSTS preload verification", "transport security analysis"]

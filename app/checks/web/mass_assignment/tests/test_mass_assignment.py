@@ -15,6 +15,8 @@ def service():
     return Service(
         url="http://target.com:80", host="target.com", port=80, scheme="http", service_type="http"
     )
+
+
 def resp(status_code=200, body="", headers=None, error=None, url="http://target.com:80"):
     return HttpResponse(
         url=url,
@@ -24,6 +26,8 @@ def resp(status_code=200, body="", headers=None, error=None, url="http://target.
         elapsed_ms=50.0,
         error=error,
     )
+
+
 REALISTIC_USER_RESPONSE = json.dumps(
     {
         "id": 42,
@@ -66,6 +70,8 @@ NESTED_USER_RESPONSE = json.dumps(
         "meta": {"request_id": "abc-123", "timestamp": "2026-01-15T10:30:00Z"},
     }
 )
+
+
 def _make_request_handler(response_map=None, default=None):
     """Build an async _request side_effect that dispatches on (method, url).
 
@@ -83,6 +89,8 @@ def _make_request_handler(response_map=None, default=None):
         return default
 
     return handler
+
+
 def mock_client(response_map=None, default=None):
     """Create a mock AsyncHttpClient whose _request dispatches via response_map."""
     client = AsyncMock()

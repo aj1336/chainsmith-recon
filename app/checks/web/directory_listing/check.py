@@ -24,7 +24,6 @@ class DirectoryListingCheck(ServiceIteratingCheck):
     produces = ["directory_listing_observations"]
     service_types = ["http", "html", "api"]
 
-
     reason = "Directory listing exposes the full filesystem structure including model files, training data, and configs"
     references = ["OWASP WSTG-CONF-04", "CWE-548"]
     techniques = ["directory listing detection", "information disclosure"]

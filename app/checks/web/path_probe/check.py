@@ -23,7 +23,6 @@ class PathProbeCheck(ServiceIteratingCheck):
     produces = ["discovered_paths"]
     service_types = ["http", "html", "api", "ai"]
 
-
     reason = "Common paths often lead to admin panels, backups, or configuration files"
     references = ["OWASP WSTG-CONF-05", "CWE-538"]
     techniques = ["directory enumeration", "forced browsing", "path traversal"]

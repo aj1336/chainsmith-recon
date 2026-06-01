@@ -22,7 +22,6 @@ class OpenAPICheck(ServiceIteratingCheck):
     produces = ["api_endpoints", "openapi_specs"]
     service_types = ["http", "api", "ai"]
 
-
     reason = "OpenAPI docs reveal all API endpoints, parameters, auth mechanisms, and data models"
     references = ["OWASP API Security Top 10", "OWASP API1:2023", "OpenAPI Specification"]
     techniques = ["API enumeration", "documentation discovery"]

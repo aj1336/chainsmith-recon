@@ -37,7 +37,6 @@ class CookieSecurityCheck(ServiceIteratingCheck):
     produces = ["cookie_observations"]
     service_types = ["http", "html", "api", "ai"]
 
-
     reason = "Insecure cookies enable session theft via XSS, network sniffing, and CSRF"
     references = ["OWASP WSTG-SESS-02", "CWE-614", "CWE-1004"]
     techniques = ["cookie attribute analysis", "session management testing"]

@@ -80,7 +80,6 @@ class FaviconCheck(ServiceIteratingCheck):
     produces = ["favicon_info"]
     service_types = ["http", "html"]
 
-
     reason = (
         "Favicon hashes identify frameworks, admin panels, and AI platforms without active probing"
     )

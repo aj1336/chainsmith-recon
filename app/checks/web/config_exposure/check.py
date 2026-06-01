@@ -24,7 +24,6 @@ class ConfigExposureCheck(ServiceIteratingCheck):
     produces = ["config_observations"]
     service_types = ["http", "html", "api"]
 
-
     reason = "An accessible .env with API keys is game over — no need to probe for prompt leakage when you have the key"
     references = ["OWASP WSTG-CONF-05", "CWE-200", "CWE-540"]
     techniques = ["configuration analysis", "secret detection"]
