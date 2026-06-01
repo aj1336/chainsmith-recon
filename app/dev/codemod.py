@@ -69,6 +69,90 @@ def rewrite_text(
     return text, count
 
 
+def _split_import_names(names: str) -> list[str]:
+    """Parse the names part of `from X import <names>` into individual items.
+
+    Handles parenthesized lists and `as` aliases. Returns items verbatim (e.g.
+    `"Foo"`, `"Bar as B"`), so the alias is preserved when re-emitting.
+    """
+    return [s.strip() for s in names.strip().strip("()").split(",") if s.strip()]
+
+
+def rewrite_imports_multiclass(
+    old_dotted: str,
+    class_to_pkg: dict[str, str],
+    search_roots: list[Path],
+    *,
+    dry_run: bool = False,
+    exclude_dirs: list[Path] | None = None,
+) -> list[CodemodResult]:
+    """Split combined imports from a multi-class module across its new packages.
+
+    A flat file declaring N checks (e.g. `ai/endpoints.py` → LLMEndpointCheck +
+    EmbeddingEndpointCheck) becomes N folders, so a single
+    `from app.checks.ai.endpoints import EmbeddingEndpointCheck, LLMEndpointCheck`
+    must split into one line per class, each pointing at that class's new package
+    (`class_to_pkg` maps the *imported name* → new package dotted path).
+
+    Only single-line `from <old_dotted> import …` statements are rewritten — the
+    only form these modules use. Attribute/patch references
+    (`<old_dotted>.AsyncHttpClient`) are intentionally left untouched: in a
+    multi-class split the symbol lands in *every* new folder, so the correct
+    target is ambiguous at the module level and is resolved per-file during test
+    co-location (each co-located test file is single-folder by then).
+    """
+    import_re = re.compile(
+        rf"^(?P<indent>[ \t]*)from {re.escape(old_dotted)} import (?P<names>.+?)[ \t]*$"
+    )
+    results: list[CodemodResult] = []
+    seen: set[Path] = set()
+    excludes = [Path(d).resolve() for d in (exclude_dirs or [])]
+    for root in search_roots:
+        for py in sorted(Path(root).rglob("*.py")):
+            if py in seen:
+                continue
+            seen.add(py)
+            resolved = py.resolve()
+            if any(ex in resolved.parents for ex in excludes):
+                continue
+            original = py.read_text(encoding="utf-8")
+            if old_dotted not in original:
+                continue
+            out: list[str] = []
+            count = 0
+            for line in original.splitlines():
+                m = import_re.match(line)
+                if not m:
+                    out.append(line)
+                    continue
+                indent = m.group("indent")
+                resolved_lines: list[str] = []
+                unresolved: list[str] = []
+                for item in _split_import_names(m.group("names")):
+                    bound = item.split(" as ")[0].strip()
+                    pkg = class_to_pkg.get(bound)
+                    if pkg:
+                        resolved_lines.append(f"{indent}from {pkg} import {item}")
+                    else:
+                        unresolved.append(item)
+                if not resolved_lines:
+                    out.append(line)  # nothing matched — leave as-is
+                    continue
+                out.extend(sorted(resolved_lines))
+                if unresolved:
+                    out.append(f"{indent}from {old_dotted} import {', '.join(unresolved)}")
+                count += 1
+            if count:
+                new_text = "\n".join(out)
+                if original.endswith("\n"):
+                    new_text += "\n"
+                if new_text != original and not dry_run:
+                    py.write_text(new_text, encoding="utf-8")
+                if new_text != original:
+                    results.append(CodemodResult(py, count))
+    return results
+
+
 def rewrite_imports(
     old_dotted: str,
     new_pkg_dotted: str,

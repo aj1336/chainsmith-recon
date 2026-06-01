@@ -1,0 +1,28 @@
+id: f82941dd-1508-4d39-88fd-b200a78f9cca
+name: ai_error_leakage
+type: check
+description: Test for sensitive information disclosure in AI error responses
+entry: check.py:AIErrorLeakageCheck
+suite: ai
+depends_on:
+- output_name: chat_endpoints
+  operator: truthy
+produces:
+- error_leaks
+intrusive: true
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- error triggering
+- information gathering
+- debug mode detection
+references:
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+- CWE-209
+reason: Error messages often reveal internal paths, tool names, and configuration
+  details

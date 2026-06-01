@@ -1,0 +1,26 @@
+id: 612d21c8-b4b8-44be-a5ce-953a799f96f4
+name: model_enumeration
+type: check
+description: Enumerate available models by testing different model parameter values
+entry: check.py:ModelEnumerationCheck
+suite: ai
+depends_on:
+- output_name: chat_endpoints
+  operator: truthy
+produces:
+- available_models
+intrusive: false
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- model enumeration
+- service fingerprinting
+references:
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: Reveals the full model inventory; internal/staging models often have weaker
+  guardrails

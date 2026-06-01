@@ -1,0 +1,25 @@
+id: f548bc11-9ab6-4f7f-949c-4f07a5225b20
+name: content_filter_check
+type: check
+description: Detect and characterize content filtering systems
+entry: check.py:ContentFilterCheck
+suite: ai
+depends_on:
+- output_name: chat_endpoints
+  operator: truthy
+produces:
+- content_filter_info
+intrusive: true
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- filter detection
+- jailbreak testing
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+reason: Understanding content filters helps identify bypass techniques

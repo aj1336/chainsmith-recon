@@ -1,0 +1,26 @@
+id: 41552295-d046-4862-be80-ef68c8a57f49
+name: training_data_extraction
+type: check
+description: Test for memorization by probing with known text prefixes and repetition
+  attacks
+entry: check.py:TrainingDataExtractionCheck
+suite: ai
+depends_on:
+- output_name: chat_endpoints
+  operator: truthy
+produces:
+- training_data_results
+intrusive: false
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- training data extraction
+- memorization probing
+references:
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: Models may memorize and reproduce sensitive training data including PII

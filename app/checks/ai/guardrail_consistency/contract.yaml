@@ -1,0 +1,28 @@
+id: 808ac909-630f-4ebd-8a87-aa8a0ae844d1
+name: guardrail_consistency
+type: check
+description: Test content filter consistency across languages, encodings, and phrasings
+entry: check.py:GuardrailConsistencyCheck
+suite: ai
+depends_on:
+- output_name: chat_endpoints
+  operator: truthy
+produces:
+- guardrail_consistency_results
+intrusive: true
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- guardrail bypass
+- multilingual testing
+- encoding bypass
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- OWASP LLM Top 10 - LLM09 Overreliance
+reason: Guardrails that block English attacks often pass the same attack in other
+  languages or encodings

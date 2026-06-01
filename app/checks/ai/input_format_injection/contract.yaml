@@ -1,0 +1,27 @@
+id: e9e7131d-f3ce-4668-9836-03c84915443d
+name: input_format_injection
+type: check
+description: Test if formatting markers in user input can override instructions
+entry: check.py:InputFormatInjectionCheck
+suite: ai
+depends_on:
+- output_name: chat_endpoints
+  operator: truthy
+produces:
+- input_format_results
+intrusive: true
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- input format injection
+- delimiter confusion
+- chat template injection
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+reason: Models trained on specific chat templates may interpret template markers in
+  user input as role boundaries

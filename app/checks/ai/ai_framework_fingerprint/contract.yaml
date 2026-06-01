@@ -1,0 +1,30 @@
+id: 70809b6b-d5a6-4e9b-84d8-1a776035518d
+name: ai_framework_fingerprint
+type: check
+description: Identify AI framework (vLLM, Ollama, LangChain, etc.) from responses
+entry: check.py:AIFrameworkFingerprintCheck
+suite: ai
+depends_on:
+- output_name: services
+  operator: truthy
+- output_name: services_probed
+  operator: truthy
+produces:
+- ai_framework
+intrusive: false
+service_types:
+- ai
+- api
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- fingerprinting
+- technology identification
+- version detection
+references:
+- MITRE ATLAS - ML Supply Chain Compromise
+reason: Knowing the AI framework enables targeted attacks against known vulnerabilities

@@ -20,6 +20,7 @@ helpers stay on the class and are mirrored (not moved) into contract.yaml.
 
 from __future__ import annotations
 
+import ast
 import importlib
 import inspect
 import re
@@ -142,9 +143,9 @@ def derive_contract(cls: type, suite: str, folder_name: str, source_text: str) -
     }
 
 
-def derive_config(cls: type) -> dict[str, Any]:
+def derive_config(cls: type, enabled: bool = True) -> dict[str, Any]:
     return {
-        "enabled": True,
+        "enabled": enabled,
         "on_critical": "annotate",
         "defaults": {
             "timeout_seconds": getattr(cls, "timeout_seconds", 30.0),
@@ -167,6 +168,61 @@ def collect_todos(contract: dict[str, Any]) -> list[str]:
 # ─────────────────────────────────────────────────────────────────────────────
 # Source rewriting
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def split_multiclass_source(source_text: str, class_names: list[str]) -> dict[str, str]:
+    """Split a multi-check module into one self-contained source per check class.
+
+    Each result reuses the module's shared *preamble* (docstring + imports —
+    everything before the first class) plus exactly one class body, so every
+    output is shaped like an ordinary single-class `check.py`. `ruff --fix`
+    prunes whichever imports a given class doesn't use.
+
+    Multi-class split is only safe when the classes are independent: it raises
+    if the module has any shared module-level helper (a top-level function or
+    assignment) or a non-check top-level class, because those would need a
+    sibling helper module (§8.7) rather than being silently dropped/duplicated.
+    """
+    tree = ast.parse(source_text)
+    lines = source_text.splitlines()
+    spans: dict[str, tuple[int, int]] = {}
+    first_class_line: int | None = None
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef):
+            start = node.lineno
+            if node.decorator_list:
+                start = min(d.lineno for d in node.decorator_list)
+            spans[node.name] = (start, node.end_lineno or node.lineno)
+            first_class_line = start if first_class_line is None else min(first_class_line, start)
+            if node.name not in class_names:
+                raise NotImplementedError(
+                    f"top-level class '{node.name}' is not a check; multi-class split "
+                    "needs a sibling helper module (§8.7)"
+                )
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            continue
+        elif (
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)
+        ):
+            continue  # module docstring / bare string
+        else:
+            raise NotImplementedError(
+                "module has a shared module-level helper "
+                f"({type(node).__name__} at line {node.lineno}); multi-class split "
+                "needs a sibling helper module (§8.7)"
+            )
+
+    if first_class_line is None:
+        raise ValueError("no class definitions to split")
+    preamble = "\n".join(lines[: first_class_line - 1]).rstrip()
+    out: dict[str, str] = {}
+    for name in class_names:
+        start, end = spans[name]
+        body = "\n".join(lines[start - 1 : end]).rstrip()
+        out[name] = f"{preamble}\n\n\n{body}\n"
+    return out
 
 
 def strip_config_tunables(source_text: str) -> str:
@@ -244,8 +300,18 @@ def migrate_check(
     dry_run: bool = False,
     resolver_path: Path = Path("app/check_resolver.py"),
     search_roots: list[Path] | None = None,
+    enabled_names: set[str] | None = None,
 ) -> MigrateResult:
-    """Migrate one flat check file into component folder(s)."""
+    """Migrate one flat check file into component folder(s).
+
+    A file declaring one check becomes one folder. A multi-check file (the only
+    one is `ai/endpoints.py`) becomes one folder per independent check — each
+    shaped exactly like a single-class folder (§8.7). `enabled_names`, when given,
+    is the set of check names currently registered; any check NOT in it gets
+    `config.yaml enabled: false` so `discover_components` skips it, preserving a
+    dormant check's dormancy across the migration (no-op when every check in the
+    suite is registered, as with web/network).
+    """
     path = Path(path)
     rename_map = rename_map or {}
     search_roots = search_roots or [Path("app"), Path("tests")]
@@ -260,83 +326,112 @@ def migrate_check(
 
     source_text = path.read_text(encoding="utf-8")
     old_dotted = module_name  # e.g. app.checks.web.robots
-
-    if len(classes) > 1:
-        # Multi-class split (§8.7) — shared helpers to a sibling module — is built
-        # before 56.4 (ai/endpoints.py). Not needed for the 56.1 pilot.
-        raise NotImplementedError(
-            f"{path} declares {len(classes)} checks "
-            f"({', '.join(c.__name__ for c in classes)}); multi-class split lands before 56.4"
-        )
-
-    cls = classes[0]
-    raw_name = cls.name
-    folder_name = rename_map.get(raw_name, raw_name)
-    contract = derive_contract(cls, suite, folder_name, source_text)
-    config = derive_config(cls)
-    result.todos.extend(collect_todos(contract))
-
-    folder = Path(checks_root) / suite / folder_name
-    package = ".".join((*Path(checks_root).parts, suite, folder_name))
-    new_pkg_dotted = package  # app.checks.web.robots_txt
-
     init_tmpl = (_TEMPLATE_DIR / "__init__.py.tmpl").read_text(encoding="utf-8")
-    check_py = strip_config_tunables(source_text)
-    # Category-A rename (§8.7): the `name` attribute propagates to the folder AND
-    # the class attribute, so the class and contract agree (avoids a split identity
-    # where cls().name != loader-built .name). Only rewrites on an actual rename.
-    if folder_name != raw_name:
-        check_py = re.sub(
-            rf'(^\s*name\s*=\s*)["\']{re.escape(raw_name)}["\']',
-            rf'\g<1>"{folder_name}"',
-            check_py,
-            count=1,
-            flags=re.MULTILINE,
-        )
-    # Defensive: never emit a self-referential import (§56.2 cors/openapi guard).
-    check_py, removed_self = sanitize_self_imports(check_py, new_pkg_dotted)
-    if removed_self:
-        result.todos.append(f"removed self-import(s): {removed_self}")
+    checks_parts = Path(checks_root).parts
 
-    if not dry_run:
-        folder.mkdir(parents=True, exist_ok=False)
-        (folder / "tests").mkdir(exist_ok=True)
-        (folder / "check.py").write_text(check_py, encoding="utf-8")
-        (folder / "contract.yaml").write_text(_yaml_dump(contract), encoding="utf-8")
-        (folder / "config.yaml").write_text(_yaml_dump(config), encoding="utf-8")
-        (folder / "__init__.py").write_text(
-            init_tmpl.format(package=package, entry_stem="check", class_name=cls.__name__),
-            encoding="utf-8",
+    # Per-class source: the whole file for a single check, else split by class (§8.7).
+    if len(classes) > 1:
+        class_bodies = split_multiclass_source(source_text, [c.__name__ for c in classes])
+    else:
+        class_bodies = {classes[0].__name__: source_text}
+
+    class_to_pkg: dict[str, str] = {}  # imported class name → new package (multi-class codemod)
+    for cls in classes:
+        raw_name = cls.name
+        folder_name = rename_map.get(raw_name, raw_name)
+        enabled = enabled_names is None or raw_name in enabled_names
+        contract = derive_contract(cls, suite, folder_name, source_text)
+        config = derive_config(cls, enabled=enabled)
+        result.todos.extend(collect_todos(contract))
+
+        folder = Path(checks_root) / suite / folder_name
+        package = ".".join((*checks_parts, suite, folder_name))
+        new_pkg_dotted = package
+        class_to_pkg[cls.__name__] = package
+
+        check_py = strip_config_tunables(class_bodies[cls.__name__])
+        # Category-A rename (§8.7): propagate to the `name` attr so class and
+        # contract agree. Only rewrites on an actual rename.
+        if folder_name != raw_name:
+            check_py = re.sub(
+                rf'(^\s*name\s*=\s*)["\']{re.escape(raw_name)}["\']',
+                rf'\g<1>"{folder_name}"',
+                check_py,
+                count=1,
+                flags=re.MULTILINE,
+            )
+        # Defensive: never emit a self-referential import (§56.2 cors/openapi guard).
+        check_py, removed_self = sanitize_self_imports(check_py, new_pkg_dotted)
+        if removed_self:
+            result.todos.append(f"removed self-import(s): {removed_self}")
+
+        if not dry_run:
+            folder.mkdir(parents=True, exist_ok=False)
+            (folder / "tests").mkdir(exist_ok=True)
+            (folder / "check.py").write_text(check_py, encoding="utf-8")
+            (folder / "contract.yaml").write_text(_yaml_dump(contract), encoding="utf-8")
+            (folder / "config.yaml").write_text(_yaml_dump(config), encoding="utf-8")
+            (folder / "__init__.py").write_text(
+                init_tmpl.format(package=package, entry_stem="check", class_name=cls.__name__),
+                encoding="utf-8",
+            )
+
+        result.folders.append(folder)
+        result.todos.append(
+            f"tests: extract {cls.__name__} tests into "
+            f"{folder / 'tests' / f'test_{folder_name}.py'} "
+            f"(patch target → {new_pkg_dotted}.check.<symbol>)"
         )
-        # Remove the original flat module (its references are codemodded below).
+
+    # Remove the original flat module once all folders exist (refs codemodded below).
+    if not dry_run:
         path.unlink()
 
-    result.folders.append(folder)
-    result.todos.append(
-        f"tests: extract {cls.__name__} tests into {folder / 'tests' / f'test_{folder_name}.py'} "
-        "(patch target → "
-        f"{new_pkg_dotted}.check.<symbol>)"
-    )
-
-    # Codemod broken references. Run even for same-name checks: the import rewrite
-    # is a no-op there, but attribute/patch refs (e.g. patch("...mod.AsyncHttpClient"))
-    # still need the `.check` submodule insertion since the package __init__ re-exports
-    # only the entry class. Exclude the new folder so its own files aren't rewritten.
-    cm = codemod.rewrite_imports(
-        old_dotted,
-        new_pkg_dotted,
-        "check",
-        search_roots,
-        dry_run=dry_run,
-        exclude_dirs=[folder],
-    )
+    # Codemod broken references. Multi-class needs combined imports split per class
+    # (each class moved to a different package); single-class uses the package
+    # re-export rewrite + `.check` insertion for attribute/patch refs.
+    if len(classes) > 1:
+        cm = codemod.rewrite_imports_multiclass(
+            old_dotted,
+            class_to_pkg,
+            search_roots,
+            dry_run=dry_run,
+            exclude_dirs=result.folders,
+        )
+        result.todos.append(
+            "multi-class: attribute/patch refs to the old module are left for "
+            "test co-location to disambiguate per-folder"
+        )
+    else:
+        cm = codemod.rewrite_imports(
+            old_dotted,
+            class_to_pkg[classes[0].__name__],
+            "check",
+            search_roots,
+            dry_run=dry_run,
+            exclude_dirs=result.folders,
+        )
     result.codemod_files = [r.file for r in cm]
 
-    # Remove from the hand-maintained resolver list.
+    # Remove every migrated class from the hand-maintained resolver list.
     if not dry_run:
-        result.removed_from_resolver = remove_from_resolver([cls.__name__], Path(resolver_path))
+        result.removed_from_resolver = remove_from_resolver(
+            [c.__name__ for c in classes], Path(resolver_path)
+        )
 
     return result
+
+
+def _currently_registered_names() -> set[str]:
+    """Names in the live registry now — used to preserve a check's enabled state.
+
+    Captured once, before any file is migrated, so a check that is dormant today
+    (present as a flat file but absent from `get_real_checks()`) is migrated with
+    `enabled: false` rather than being silently activated by auto-discovery.
+    """
+    from app.check_resolver import get_real_checks
+
+    return {c.name for c in get_real_checks()}
 
 
 def migrate_suite(
@@ -347,12 +442,15 @@ def migrate_suite(
 ) -> list[MigrateResult]:
     """Run migrate_check for every flat check file in a suite (§8.1 driver)."""
     suite_dir = Path(checks_root) / suite
+    enabled_names = _currently_registered_names()
     results: list[MigrateResult] = []
     for py in sorted(suite_dir.glob("*.py")):
         if py.name in ("__init__.py",):
             continue
         try:
-            results.append(migrate_check(py, rename_map, checks_root, dry_run))
+            results.append(
+                migrate_check(py, rename_map, checks_root, dry_run, enabled_names=enabled_names)
+            )
         except (ValueError, NotImplementedError) as e:
             r = MigrateResult(source=py, dry_run=dry_run)
             r.todos.append(f"SKIPPED: {e}")

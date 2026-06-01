@@ -1,0 +1,26 @@
+id: f5ae3e9d-9fce-4e09-89a3-e46e6b99c65d
+name: response_caching
+type: check
+description: Detect response caching by comparing identical requests for content and
+  timing patterns
+entry: check.py:ResponseCachingCheck
+suite: ai
+depends_on:
+- output_name: chat_endpoints
+  operator: truthy
+produces:
+- cache_detection_results
+intrusive: false
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- caching detection
+- response analysis
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+reason: Cached responses may bypass content filters that operate on generation time

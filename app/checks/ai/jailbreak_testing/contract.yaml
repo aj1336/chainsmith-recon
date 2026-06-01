@@ -1,0 +1,27 @@
+id: 238e20e5-0b64-481b-8730-464064a41e60
+name: jailbreak_testing
+type: check
+description: Test jailbreak techniques to assess content filter robustness
+entry: check.py:JailbreakTestingCheck
+suite: ai
+depends_on:
+- output_name: chat_endpoints
+  operator: truthy
+produces:
+- jailbreak_results
+intrusive: true
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- jailbreaking
+- filter bypass
+- prompt injection
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- OWASP LLM Top 10 - LLM09 Overreliance
+reason: Content filters that block obvious attacks often pass subtle bypass techniques

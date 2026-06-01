@@ -90,26 +90,6 @@ def get_real_checks() -> list:
         AgentToolAbuseCheck,
         AgentTrustChainCheck,
     )
-    from app.checks.ai import (
-        AIErrorLeakageCheck,
-        AIFrameworkFingerprintCheck,
-        APIParameterInjectionCheck,
-        ContentFilterCheck,
-        ContextWindowCheck,
-        EmbeddingEndpointCheck,
-        InputFormatInjectionCheck,
-        JailbreakTestingCheck,
-        LLMEndpointCheck,
-        ModelEnumerationCheck,
-        ModelInfoCheck,
-        MultiTurnInjectionCheck,
-        OutputFormatManipulationCheck,
-        PromptLeakageCheck,
-        RateLimitCheck,
-        SystemPromptInjectionCheck,
-        TokenCostExhaustionCheck,
-        ToolDiscoveryCheck,
-    )
     from app.checks.cag import (
         CacheEvictionCheck,
         CacheKeyReverseCheck,
@@ -180,27 +160,9 @@ def get_real_checks() -> list:
         # Web critical observations (Phase 6a — depends on services, some use path_probe output)
         # Web Phase 4 (depends on Phase 2-3)
         # AI discovery (depends on services)
-        LLMEndpointCheck(),
-        EmbeddingEndpointCheck(),
-        ModelInfoCheck(),
-        AIFrameworkFingerprintCheck(),
         # AI Phase 2 (depends on chat_endpoints)
-        AIErrorLeakageCheck(),
-        ContentFilterCheck(),
-        RateLimitCheck(),
-        ContextWindowCheck(),
-        ModelEnumerationCheck(),
-        APIParameterInjectionCheck(),
-        SystemPromptInjectionCheck(),
         # AI Phase 3 (depends on Phase 2 results)
-        ToolDiscoveryCheck(),
-        PromptLeakageCheck(),
-        OutputFormatManipulationCheck(),
         # AI Phase 4 (uses filter/tool knowledge from Phase 2-3)
-        JailbreakTestingCheck(),
-        MultiTurnInjectionCheck(),
-        InputFormatInjectionCheck(),
-        TokenCostExhaustionCheck(),
         # MCP Phase 1 (depends on services — discovery)
         MCPDiscoveryCheck(),
         WebSocketTransportCheck(),

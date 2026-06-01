@@ -1,0 +1,7 @@
+enabled: false
+on_critical: annotate
+defaults:
+  timeout_seconds: 90.0
+  requests_per_second: 1.0
+  retry_count: 1
+  delay_between_targets: 0.1

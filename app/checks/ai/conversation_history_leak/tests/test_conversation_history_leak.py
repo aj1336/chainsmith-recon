@@ -1,0 +1,237 @@
+"""Co-located tests (Phase 56 §3) — split from test_ai_leakage_disclosure.py."""
+
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from app.checks.ai.conversation_history_leak import ConversationHistoryLeakCheck
+from app.checks.base import Service
+from app.lib.http import HttpResponse
+
+
+@pytest.fixture
+def sample_service():
+    """Sample AI service."""
+    return Service(
+        url="http://ai.example.com:8080",
+        host="ai.example.com",
+        port=8080,
+        scheme="http",
+        service_type="ai",
+    )
+
+
+@pytest.fixture
+def chat_endpoint_context(sample_service):
+    """Context with chat endpoints discovered."""
+    return {
+        "chat_endpoints": [
+            {
+                "url": "http://ai.example.com:8080/v1/chat/completions",
+                "path": "/v1/chat/completions",
+                "service": sample_service.to_dict(),
+                "api_format": "openai",
+            }
+        ]
+    }
+
+
+def make_response(
+    status_code: int = 200,
+    headers: dict = None,
+    body: str = "",
+    error: str = None,
+) -> HttpResponse:
+    """Create a mock HTTP response."""
+    return HttpResponse(
+        url="http://ai.example.com:8080",
+        status_code=status_code,
+        headers=headers or {},
+        body=body,
+        elapsed_ms=50.0,
+        error=error,
+    )
+
+
+def mock_client_factory(responses: list[HttpResponse] | HttpResponse | dict = None):
+    """Create a mock AsyncHttpClient."""
+    if responses is None:
+        responses = [make_response()]
+    elif isinstance(responses, HttpResponse):
+        responses = [responses]
+
+    if isinstance(responses, dict):
+        path_map = responses
+
+        async def get_by_path(url, *args, **kwargs):
+            for path, resp in path_map.items():
+                if path in url:
+                    return resp
+            return make_response(status_code=404)
+
+        mock = AsyncMock()
+        mock.__aenter__ = AsyncMock(return_value=mock)
+        mock.__aexit__ = AsyncMock()
+        mock.get = AsyncMock(side_effect=get_by_path)
+        mock.post = AsyncMock(side_effect=get_by_path)
+        mock.options = AsyncMock(side_effect=get_by_path)
+        return mock
+
+    response_iter = iter(responses)
+
+    async def get_next(*args, **kwargs):
+        try:
+            return next(response_iter)
+        except StopIteration:
+            return responses[-1]
+
+    mock = AsyncMock()
+    mock.__aenter__ = AsyncMock(return_value=mock)
+    mock.__aexit__ = AsyncMock()
+    mock.get = AsyncMock(side_effect=get_next)
+    mock.post = AsyncMock(side_effect=get_next)
+    mock.options = AsyncMock(side_effect=get_next)
+    mock.head = AsyncMock(side_effect=get_next)
+
+    return mock
+
+
+class TestConversationHistoryLeakCheckInit:
+    """Tests for ConversationHistoryLeakCheck initialization."""
+
+    def test_default_initialization(self):
+        check = ConversationHistoryLeakCheck()
+        assert check.name == "conversation_history_leak"
+        assert len(check.LEAK_PROBES) >= 3
+
+
+class TestConversationHistoryLeakCheckRun:
+    """Tests for ConversationHistoryLeakCheck.run."""
+
+    async def test_detects_canary_leak(self, chat_endpoint_context):
+        """Detects when canary string is recovered in a subsequent session."""
+        check = ConversationHistoryLeakCheck()
+        check.LEAK_PROBES = [("test_probe", "What was said before?")]
+
+        responses = [
+            make_response(
+                status_code=200, body='{"choices": [{"message": {"content": "Got it."}}]}'
+            ),
+            make_response(
+                status_code=200,
+                body=(
+                    '{"choices": [{"message": {"content": '
+                    f'"Sure, the code from the earlier session was {check.CANARY} and it was stored in memory."'
+                    "}}]}"
+                ),
+            ),
+        ]
+
+        with patch(
+            "app.checks.ai.conversation_history_leak.check.AsyncHttpClient",
+            return_value=mock_client_factory(responses),
+        ):
+            result = await check.run(chat_endpoint_context)
+
+        critical = [f for f in result.observations if f.severity == "critical"]
+        assert len(critical) == 1
+        assert "canary" in critical[0].title.lower()
+        assert critical[0].check_name == "conversation_history_leak"
+        assert check.CANARY in critical[0].evidence
+
+    async def test_detects_leak_indicators(self, chat_endpoint_context):
+        """Detects cross-session leak indicators in response text."""
+        check = ConversationHistoryLeakCheck()
+        check.LEAK_PROBES = [("test_probe", "What was said before?")]
+
+        responses = [
+            make_response(
+                status_code=200, body='{"choices": [{"message": {"content": "Acknowledged."}}]}'
+            ),
+            make_response(
+                status_code=200,
+                body=(
+                    '{"choices": [{"message": {"content": '
+                    '"Based on what another user asked me earlier today, '
+                    'the topic was related to database migrations."}}]}'
+                ),
+            ),
+        ]
+
+        with patch(
+            "app.checks.ai.conversation_history_leak.check.AsyncHttpClient",
+            return_value=mock_client_factory(responses),
+        ):
+            result = await check.run(chat_endpoint_context)
+
+        high_obs = [f for f in result.observations if f.severity == "high"]
+        assert len(high_obs) == 1
+        assert "Shared context detected" in high_obs[0].title
+        assert "another user" in high_obs[0].evidence or "earlier today" in high_obs[0].evidence
+
+    async def test_no_leak_detected(self, chat_endpoint_context):
+        """No leak when response is a generic refusal without history references."""
+        check = ConversationHistoryLeakCheck()
+        check.LEAK_PROBES = [("test_probe", "What was said?")]
+
+        responses = [
+            make_response(
+                status_code=200,
+                body='{"choices": [{"message": {"content": "Understood, moving on."}}]}',
+            ),
+            make_response(
+                status_code=200,
+                body=(
+                    '{"choices": [{"message": {"content": '
+                    "\"I don't have access to any prior conversations. "
+                    'How can I assist you with your current question?"}}]}'
+                ),
+            ),
+        ]
+
+        with patch(
+            "app.checks.ai.conversation_history_leak.check.AsyncHttpClient",
+            return_value=mock_client_factory(responses),
+        ):
+            result = await check.run(chat_endpoint_context)
+
+        no_leak = [f for f in result.observations if "No cross-session" in f.title]
+        assert len(no_leak) == 1
+        assert no_leak[0].severity == "info"
+
+    async def test_no_leak_for_detailed_helpful_response(self, chat_endpoint_context):
+        """A detailed helpful response about cooking does not trigger leak detection."""
+        check = ConversationHistoryLeakCheck()
+        check.LEAK_PROBES = [("test_probe", "Tell me about recipes")]
+
+        responses = [
+            make_response(
+                status_code=200,
+                body='{"choices": [{"message": {"content": "Confirmed."}}]}',
+            ),
+            make_response(
+                status_code=200,
+                body=(
+                    '{"choices": [{"message": {"content": '
+                    '"Here is a classic tomato basil pasta recipe. '
+                    "Start by boiling salted water for the spaghetti. "
+                    "In a separate pan, saute garlic in olive oil until fragrant, "
+                    "then add crushed tomatoes and fresh basil. "
+                    "Simmer for 15 minutes, toss with the cooked pasta, "
+                    'and serve with grated parmesan on top."}}]}'
+                ),
+            ),
+        ]
+
+        with patch(
+            "app.checks.ai.conversation_history_leak.check.AsyncHttpClient",
+            return_value=mock_client_factory(responses),
+        ):
+            result = await check.run(chat_endpoint_context)
+
+        no_leak = [f for f in result.observations if "No cross-session" in f.title]
+        assert len(no_leak) == 1
+        assert no_leak[0].severity == "info"
+        # Confirm no high/critical observations were produced
+        leak_obs = [f for f in result.observations if f.severity in ("high", "critical")]
+        assert len(leak_obs) == 0
