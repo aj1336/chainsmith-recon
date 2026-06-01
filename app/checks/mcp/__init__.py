@@ -59,7 +59,6 @@ from app.checks.mcp.notification_injection import MCPNotificationInjectionCheck
 # Phase 9 Wave 4
 from app.checks.mcp.prompt_injection import MCPPromptInjectionCheck
 from app.checks.mcp.protocol_version import MCPProtocolVersionCheck
-from app.checks.mcp.rate_limit import ToolRateLimitCheck
 from app.checks.mcp.resource_traversal import MCPResourceTraversalCheck
 
 # Phase 9 Wave 5
@@ -75,6 +74,7 @@ from app.checks.mcp.tool_enumeration import MCPToolEnumerationCheck
 
 # Phase 9 Wave 3
 from app.checks.mcp.tool_invocation import MCPToolInvocationCheck
+from app.checks.mcp.tool_rate_limit import ToolRateLimitCheck
 from app.checks.mcp.transport_security import TransportSecurityCheck
 from app.checks.mcp.undeclared_capabilities import UndeclaredCapabilityCheck
 from app.checks.mcp.websocket_transport import WebSocketTransportCheck

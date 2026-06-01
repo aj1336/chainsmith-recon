@@ -109,26 +109,6 @@ def get_real_checks() -> list:
         StaleContextCheck,
         TTLMappingCheck,
     )
-    from app.checks.mcp import (
-        MCPAuthCheck,
-        MCPDiscoveryCheck,
-        MCPNotificationInjectionCheck,
-        MCPPromptInjectionCheck,
-        MCPProtocolVersionCheck,
-        MCPResourceTraversalCheck,
-        MCPSamplingAbuseCheck,
-        MCPServerFingerprintCheck,
-        MCPToolEnumerationCheck,
-        MCPToolInvocationCheck,
-        ResourceTemplateInjectionCheck,
-        ShadowToolDetectionCheck,
-        ToolChainAnalysisCheck,
-        ToolRateLimitCheck,
-        ToolSchemaLeakageCheck,
-        TransportSecurityCheck,
-        UndeclaredCapabilityCheck,
-        WebSocketTransportCheck,
-    )
     from app.checks.rag import (
         RAGAdversarialEmbeddingCheck,
         RAGAuthBypassCheck,
@@ -163,29 +143,6 @@ def get_real_checks() -> list:
         # AI Phase 2 (depends on chat_endpoints)
         # AI Phase 3 (depends on Phase 2 results)
         # AI Phase 4 (uses filter/tool knowledge from Phase 2-3)
-        # MCP Phase 1 (depends on services — discovery)
-        MCPDiscoveryCheck(),
-        WebSocketTransportCheck(),
-        # MCP Phase 2 (depends on mcp_servers)
-        MCPToolEnumerationCheck(),
-        MCPAuthCheck(),
-        TransportSecurityCheck(),
-        MCPServerFingerprintCheck(),
-        UndeclaredCapabilityCheck(),
-        MCPProtocolVersionCheck(),
-        # MCP Phase 3 (depends on Phase 2 — tool data + server connections)
-        ShadowToolDetectionCheck(),
-        ToolSchemaLeakageCheck(),
-        ToolChainAnalysisCheck(),
-        MCPNotificationInjectionCheck(),
-        MCPSamplingAbuseCheck(),
-        ToolRateLimitCheck(),
-        # MCP Phase 4 (active probing — requires tool invocation)
-        MCPToolInvocationCheck(),
-        MCPResourceTraversalCheck(),
-        ResourceTemplateInjectionCheck(),
-        # MCP Phase 5 (cross-suite — depends on MCP + AI suite)
-        MCPPromptInjectionCheck(),
         # Agent Phase 1 (depends on services — discovery)
         AgentDiscoveryCheck(),
         # Agent Phase 2 (depends on agent_endpoints)
@@ -386,11 +343,47 @@ def filter_by_suites(checks: list, suites: list[str]) -> list:
     return filtered
 
 
+# MCP check names after the Phase 56.5 `mcp_` prefix strip. Matched exactly (not by
+# substring) because several collide with AI/agent substrings — see infer_suite().
+_MCP_CHECK_NAMES = frozenset(
+    {
+        "auth_check",
+        "discovery",
+        "notification_injection",
+        "prompt_injection",
+        "protocol_version",
+        "resource_traversal",
+        "sampling_abuse",
+        "schema_leakage",
+        "server_fingerprint",
+        "shadow_tool_detection",
+        "template_injection",
+        "tool_chain_analysis",
+        "tool_enumeration",
+        "tool_invocation",
+        "tool_rate_limit",
+        "transport_security",
+        "undeclared_capabilities",
+        "websocket_transport",
+    }
+)
+
+
 def infer_suite(check_name: str) -> str:
     """Infer the suite name from a check name."""
     name_lower = check_name.lower()
+    # MCP checks (Phase 56.5) had their redundant `mcp_` prefix stripped, so they
+    # can no longer be matched by an "mcp" substring — and several now collide with
+    # AI/agent substrings (discovery→agent_discovery, prompt_injection→
+    # system_prompt_injection, server_fingerprint→"fingerprint", tool_rate_limit→
+    # "rate_limit"). Match the exact MCP name set first so the substring patterns
+    # below never mis-grab them (and vice-versa).
+    if name_lower in _MCP_CHECK_NAMES:
+        return "mcp"
     suite_patterns = {
-        # Prefix-based suites first (avoid false matches with AI patterns)
+        # Legacy fallback: observations/data persisted with the pre-56.5 `mcp_`
+        # prefix (e.g. simulations) still route to mcp. New stripped names are
+        # handled by the exact-set check above before reaching here.
         "mcp": ["mcp"],
         "agent": ["agent"],
         "rag": ["rag"],

@@ -1,0 +1,31 @@
+id: 16765a9a-c3c5-48dc-87ab-3f0a6473d7f9
+name: shadow_tool_detection
+type: check
+description: Detect MCP shadow tool attack susceptibility
+entry: check.py:ShadowToolDetectionCheck
+suite: mcp
+depends_on:
+- output_name: mcp_tools
+  operator: truthy
+produces:
+- mcp_shadow_tool_risk
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- namespace analysis
+- protocol probing
+- collision detection
+references:
+- MCP Specification - https://modelcontextprotocol.io/specification
+- MITRE ATLAS - AML.T0051 LLM Plugin Compromise
+reason: In multi-server MCP setups, tool name collisions allow attackers to shadow
+  legitimate tools with malicious replacements

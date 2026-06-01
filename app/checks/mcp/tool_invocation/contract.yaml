@@ -1,0 +1,33 @@
+id: 2745ba97-2dd6-4ecf-ba2f-227200bf3fbd
+name: tool_invocation
+type: check
+description: Probe MCP tools with safe test payloads to validate risk
+entry: check.py:MCPToolInvocationCheck
+suite: mcp
+depends_on:
+- output_name: mcp_tools
+  operator: truthy
+- output_name: mcp_servers
+  operator: truthy
+produces:
+- mcp_invocation_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- tool probing
+- behavioral analysis
+- risk validation
+references:
+- MCP Specification - Tools - https://spec.modelcontextprotocol.io/specification/server/tools/
+- OWASP LLM Top 10 - LLM07 Insecure Plugin Design
+reason: A tool classified as 'high risk' by name may not actually execute. Probing
+  validates real risk.

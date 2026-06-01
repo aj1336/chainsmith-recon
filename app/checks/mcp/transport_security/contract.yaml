@@ -1,0 +1,31 @@
+id: c5b1938e-af1b-4bb2-b246-b45b61302273
+name: transport_security
+type: check
+description: Analyze MCP transport layer security (TLS, CORS, SSE auth)
+entry: check.py:TransportSecurityCheck
+suite: mcp
+depends_on:
+- output_name: mcp_servers
+  operator: truthy
+produces:
+- mcp_transport_security
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- transport analysis
+- CORS testing
+- TLS verification
+references:
+- MCP Specification - Transports - https://spec.modelcontextprotocol.io/specification/basic/transports/
+- OWASP - Transport Layer Security
+reason: MCP endpoints may transmit tool results and credentials in cleartext or allow
+  cross-origin access

@@ -457,9 +457,9 @@ CHAIN_PATTERNS = [
         "description": "Enumerated tools with no authentication enables direct unauthenticated tool invocation",
         "severity": "critical",
         "required_observations": [
-            {"check_name": "mcp_tool_enumeration"},
-            {"check_name": "mcp_auth_check"},
-            {"check_name": "mcp_tool_invocation"},
+            {"check_name": "tool_enumeration"},
+            {"check_name": "auth_check"},
+            {"check_name": "tool_invocation"},
         ],
         "exploitation_steps": [
             "Enumerate all tools exposed by the MCP server",
@@ -475,8 +475,8 @@ CHAIN_PATTERNS = [
         "description": "Hidden shadow tools that override legitimate ones are exploitable via prompt injection in tool results",
         "severity": "high",
         "required_observations": [
-            {"check_name": "mcp_shadow_tool_detection"},
-            {"check_name": "mcp_prompt_injection"},
+            {"check_name": "shadow_tool_detection"},
+            {"check_name": "prompt_injection"},
         ],
         "exploitation_steps": [
             "Identify shadow tools that override or masquerade as legitimate tools",
@@ -492,8 +492,8 @@ CHAIN_PATTERNS = [
         "description": "Dangerous capability combinations identified and confirmed invocable",
         "severity": "high",
         "required_observations": [
-            {"check_name": "mcp_tool_chain_analysis"},
-            {"check_name": "mcp_tool_invocation"},
+            {"check_name": "tool_chain_analysis"},
+            {"check_name": "tool_invocation"},
         ],
         "exploitation_steps": [
             "Review dangerous tool combinations identified by chain analysis",
@@ -509,8 +509,8 @@ CHAIN_PATTERNS = [
         "description": "Leaked schemas reveal parameter structure, enabling precisely crafted tool invocations",
         "severity": "medium",
         "required_observations": [
-            {"check_name": "mcp_schema_leakage"},
-            {"check_name": "mcp_tool_invocation"},
+            {"check_name": "schema_leakage"},
+            {"check_name": "tool_invocation"},
         ],
         "exploitation_steps": [
             "Extract detailed parameter schemas from MCP tool definitions",
@@ -526,8 +526,8 @@ CHAIN_PATTERNS = [
         "description": "Path traversal on resources combined with template injection enables server-side file access or SSRF",
         "severity": "high",
         "required_observations": [
-            {"check_name": "mcp_resource_traversal"},
-            {"check_name": "mcp_template_injection"},
+            {"check_name": "resource_traversal"},
+            {"check_name": "template_injection"},
         ],
         "exploitation_steps": [
             "Identify MCP resource URIs vulnerable to path traversal",
@@ -804,9 +804,9 @@ CHAIN_PATTERNS = [
         "description": "MCP tools feed into agent context; prompt injection via tool results hijacks agent behavior",
         "severity": "critical",
         "required_observations": [
-            {"check_name": "mcp_discovery"},
+            {"check_name": "discovery"},
             {"check_name": "agent_discovery"},
-            {"check_name": "mcp_prompt_injection"},
+            {"check_name": "prompt_injection"},
         ],
         "exploitation_steps": [
             "Identify MCP server endpoints and connected agent orchestration",

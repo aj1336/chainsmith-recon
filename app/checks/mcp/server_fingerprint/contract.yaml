@@ -1,0 +1,30 @@
+id: 757d589c-2611-44bb-8117-9da0845464dc
+name: server_fingerprint
+type: check
+description: Identify MCP server implementation and version
+entry: check.py:MCPServerFingerprintCheck
+suite: mcp
+depends_on:
+- output_name: mcp_servers
+  operator: truthy
+produces:
+- mcp_server_implementations
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- fingerprinting
+- version detection
+- error analysis
+references:
+- MCP Specification - https://modelcontextprotocol.io/specification
+- CWE-200 Exposure of Sensitive Information
+reason: Identifying the MCP server implementation enables targeted vulnerability research

@@ -1,0 +1,33 @@
+id: 15cd2c63-5587-4dcf-aa66-685e0d2035b5
+name: discovery
+type: check
+description: Discover Model Context Protocol (MCP) server endpoints
+entry: check.py:MCPDiscoveryCheck
+suite: mcp
+depends_on:
+- output_name: services
+  operator: truthy
+- output_name: services_probed
+  operator: truthy
+produces:
+- mcp_servers
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- endpoint discovery
+- protocol fingerprinting
+- API enumeration
+references:
+- MCP Specification - https://modelcontextprotocol.io/specification
+- OWASP LLM Top 10 - LLM07 Insecure Plugin Design
+reason: MCP servers expose tool-calling interfaces that may allow command execution,
+  file access, or data exfiltration

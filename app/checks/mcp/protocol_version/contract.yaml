@@ -1,0 +1,28 @@
+id: dc47108e-294f-4f1c-9a36-7efe54b94681
+name: protocol_version
+type: check
+description: Test MCP server for protocol version downgrade vulnerabilities
+entry: check.py:MCPProtocolVersionCheck
+suite: mcp
+depends_on:
+- output_name: mcp_servers
+  operator: truthy
+produces:
+- mcp_protocol_versions
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- protocol downgrade
+- version probing
+references:
+- MCP Specification - https://modelcontextprotocol.io/specification
+reason: Older MCP protocol versions may have weaker security or missing capabilities

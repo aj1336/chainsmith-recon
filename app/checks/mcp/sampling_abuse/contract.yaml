@@ -1,0 +1,29 @@
+id: b487d464-3ac6-4bac-ad90-25111c65cc12
+name: sampling_abuse
+type: check
+description: Test MCP sampling endpoint for open LLM proxy and filter bypass
+entry: check.py:MCPSamplingAbuseCheck
+suite: mcp
+depends_on:
+- output_name: mcp_servers
+  operator: truthy
+produces:
+- mcp_sampling_status
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- LLM proxy abuse
+- content filter bypass
+- system prompt injection
+references:
+- MCP Specification - Sampling - https://spec.modelcontextprotocol.io/specification/server/sampling/
+reason: MCP sampling endpoints expose an LLM proxy that may bypass content filters

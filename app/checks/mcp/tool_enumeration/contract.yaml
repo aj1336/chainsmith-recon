@@ -1,0 +1,33 @@
+id: f593aa3d-2fd7-4b1d-8d0e-e15c2ed41d9e
+name: tool_enumeration
+type: check
+description: Enumerate tools exposed by MCP servers and assess risk levels
+entry: check.py:MCPToolEnumerationCheck
+suite: mcp
+depends_on:
+- output_name: mcp_servers
+  operator: truthy
+produces:
+- mcp_tools
+- high_risk_tools
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- API enumeration
+- capability mapping
+- attack surface analysis
+references:
+- MCP Specification - Tools - https://spec.modelcontextprotocol.io/specification/server/tools/
+- OWASP LLM Top 10 - LLM07 Insecure Plugin Design
+- MITRE ATLAS - AML.T0051 LLM Plugin Compromise
+reason: MCP tools can execute commands, access files, and perform privileged operations.
+  Enumerating tools reveals the attack surface for injection and abuse.
