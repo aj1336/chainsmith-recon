@@ -1,0 +1,31 @@
+id: 32075d6c-8aef-45c3-b1d2-224dc5de76e0
+name: agent_trust_chain
+type: check
+description: Exploit trust chain hierarchies in multi-agent systems
+entry: check.py:AgentTrustChainCheck
+suite: agent
+depends_on:
+- output_name: agent_endpoints
+  operator: truthy
+produces:
+- trust_chain_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- trust chain exploitation
+- false authority assertion
+- inter-agent manipulation
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- MITRE ATLAS - AML.T0054 Prompt Injection
+reason: Multi-agent systems where one agent's output influences another's behavior
+  are vulnerable to false authority assertions that bypass all per-agent safety mechanisms

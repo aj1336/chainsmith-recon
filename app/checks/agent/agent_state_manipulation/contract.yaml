@@ -1,0 +1,31 @@
+id: 784edd76-f220-48d3-8259-299a66917dca
+name: agent_state_manipulation
+type: check
+description: Test direct agent state manipulation via /state and /threads endpoints
+entry: check.py:AgentStateManipulationCheck
+suite: agent
+depends_on:
+- output_name: agent_endpoints
+  operator: truthy
+produces:
+- state_manipulation_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- state manipulation
+- direct API modification
+- execution path alteration
+references:
+- OWASP LLM Top 10 - LLM07 Insecure Plugin Design
+- MITRE ATLAS - AML.T0054 Prompt Injection
+reason: Writable state endpoints allow arbitrary modification of agent behavior, bypassing
+  all conversational safety mechanisms

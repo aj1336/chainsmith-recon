@@ -1,0 +1,32 @@
+id: 29a84f25-f915-4348-ae0d-edfbba6ec415
+name: cag_provider_caching
+type: check
+description: Analyze provider-level prompt caching behavior and token leakage
+entry: check.py:ProviderCachingCheck
+suite: cag
+depends_on:
+- output_name: cag_endpoints
+  operator: truthy
+produces:
+- provider_cache_info
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- token analysis
+- prompt caching detection
+- usage metadata inspection
+references:
+- https://www.anthropic.com/news/prompt-caching
+- https://platform.openai.com/docs/guides/prompt-caching
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: Provider-level prompt caching may reveal shared system prompts and cross-user
+  prefix sharing

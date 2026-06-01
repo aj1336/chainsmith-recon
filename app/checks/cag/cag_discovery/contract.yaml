@@ -1,0 +1,35 @@
+id: 2b1a9ea3-9a3c-4063-a747-028e08daabba
+name: cag_discovery
+type: check
+description: Detect Cache-Augmented Generation endpoints and caching infrastructure
+entry: check.py:CAGDiscoveryCheck
+suite: cag
+depends_on:
+- output_name: services
+  operator: truthy
+- output_name: services_probed
+  operator: truthy
+produces:
+- cag_endpoints
+- cache_infrastructure
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- cache discovery
+- timing analysis
+- header fingerprinting
+references:
+- https://www.anthropic.com/news/prompt-caching
+- https://platform.openai.com/docs/guides/prompt-caching
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: CAG systems can be exploited for cache poisoning, stale context attacks, cross-user
+  cache leakage, and cache-based denial of service

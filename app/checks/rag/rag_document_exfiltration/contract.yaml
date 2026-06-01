@@ -1,0 +1,30 @@
+id: 0658d045-ed1e-4a21-af61-32f2dcc071a1
+name: rag_document_exfiltration
+type: check
+description: Probe for sensitive content extraction via RAG queries
+entry: check.py:RAGDocumentExfiltrationCheck
+suite: rag
+depends_on:
+- output_name: rag_endpoints
+  operator: truthy
+produces:
+- sensitive_content_categories
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- knowledge base probing
+- sensitive data discovery
+- retrieval exploitation
+references:
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: RAG systems may expose credentials, PII, or internal infrastructure details
+  through natural language queries — bypassing traditional access controls

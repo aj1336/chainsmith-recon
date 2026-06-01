@@ -1,0 +1,31 @@
+id: fc7e7682-dc88-44ba-b11f-712bcbe13cef
+name: agent_privilege_escalation
+type: check
+description: Test for privilege escalation via conversational claims
+entry: check.py:AgentPrivilegeEscalationCheck
+suite: agent
+depends_on:
+- output_name: agent_endpoints
+  operator: truthy
+produces:
+- privilege_escalation_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- privilege escalation
+- role impersonation
+- authority bypass
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- MITRE ATLAS - AML.T0054 Prompt Injection
+reason: Agents may grant elevated access based on conversational claims without verifying
+  the user's actual permissions

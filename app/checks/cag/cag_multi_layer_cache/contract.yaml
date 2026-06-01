@@ -1,0 +1,31 @@
+id: 7438e611-3af9-4d87-8723-c9767c6ac414
+name: cag_multi_layer_cache
+type: check
+description: Detect multiple cache layers and test bypass behavior
+entry: check.py:MultiLayerCacheCheck
+suite: cag
+depends_on:
+- output_name: cag_endpoints
+  operator: truthy
+produces:
+- cache_layers
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- cache layer detection
+- cache bypass
+- timing analysis
+references:
+- https://portswigger.net/web-security/web-cache-poisoning
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: Multi-layer caches may have inconsistent security properties; bypassing one
+  layer can reveal vulnerabilities in another

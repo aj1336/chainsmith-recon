@@ -1,0 +1,32 @@
+id: 9e8370b4-8202-4ae0-a9f2-aa2eeced6590
+name: rag_vector_store_access
+type: check
+description: Probe vector store APIs for direct data access
+entry: check.py:RAGVectorStoreAccessCheck
+suite: rag
+depends_on:
+- output_name: vector_stores
+  operator: truthy
+produces:
+- accessible_stores
+- vector_store_collections
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- vector store enumeration
+- direct data access
+- API probing
+references:
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: Direct vector store access bypasses all RAG-level access controls, input validation,
+  and output filtering — raw document chunks with metadata are returned without LLM
+  processing

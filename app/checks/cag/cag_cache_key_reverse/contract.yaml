@@ -1,0 +1,31 @@
+id: 3d526f5b-9764-46b7-bc2e-bd5c02f33be2
+name: cag_cache_key_reverse
+type: check
+description: Map cache key components by systematically varying query inputs
+entry: check.py:CacheKeyReverseCheck
+suite: cag
+depends_on:
+- output_name: cag_endpoints
+  operator: truthy
+produces:
+- key_structure
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- cache key analysis
+- timing analysis
+- input variation
+references:
+- https://portswigger.net/web-security/web-cache-poisoning
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: 'Understanding cache key structure reveals poisoning vectors: keys that exclude
+  system prompts enable multi-tenant attacks'

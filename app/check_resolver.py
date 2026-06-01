@@ -71,63 +71,6 @@ def resolve_checks(
 
 def get_real_checks() -> list:
     """Get all real check instances."""
-    from app.checks.agent import (
-        AgentCallbackInjectionCheck,
-        AgentContextOverflowCheck,
-        AgentCrossInjectionCheck,
-        AgentDiscoveryCheck,
-        AgentFrameworkExploitsCheck,
-        AgentFrameworkVersionCheck,
-        AgentGoalInjectionCheck,
-        AgentLoopDetectionCheck,
-        AgentMemoryExtractionCheck,
-        AgentMemoryPoisoningCheck,
-        AgentMultiAgentDetectionCheck,
-        AgentPrivilegeEscalationCheck,
-        AgentReflectionAbuseCheck,
-        AgentStateManipulationCheck,
-        AgentStreamingInjectionCheck,
-        AgentToolAbuseCheck,
-        AgentTrustChainCheck,
-    )
-    from app.checks.cag import (
-        CacheEvictionCheck,
-        CacheKeyReverseCheck,
-        CachePoisoningCheck,
-        CacheQuotaCheck,
-        CacheWarmingCheck,
-        CAGCacheProbeCheck,
-        CAGDiscoveryCheck,
-        CrossUserLeakageCheck,
-        DistributedCacheCheck,
-        InjectionPersistenceCheck,
-        MultiLayerCacheCheck,
-        ProviderCachingCheck,
-        SemanticThresholdCheck,
-        SerializationCheck,
-        SideChannelCheck,
-        StaleContextCheck,
-        TTLMappingCheck,
-    )
-    from app.checks.rag import (
-        RAGAdversarialEmbeddingCheck,
-        RAGAuthBypassCheck,
-        RAGCachePoisoningCheck,
-        RAGChunkBoundaryCheck,
-        RAGCollectionEnumerationCheck,
-        RAGCorpusPoisoningCheck,
-        RAGCrossCollectionCheck,
-        RAGDiscoveryCheck,
-        RAGDocumentExfiltrationCheck,
-        RAGEmbeddingFingerprintCheck,
-        RAGFusionRerankerCheck,
-        RAGIndirectInjectionCheck,
-        RAGMetadataInjectionCheck,
-        RAGMultimodalInjectionCheck,
-        RAGRetrievalManipulationCheck,
-        RAGSourceAttributionCheck,
-        RAGVectorStoreAccessCheck,
-    )
 
     # Instantiate all checks in dependency order
     checks = [
@@ -144,71 +87,20 @@ def get_real_checks() -> list:
         # AI Phase 3 (depends on Phase 2 results)
         # AI Phase 4 (uses filter/tool knowledge from Phase 2-3)
         # Agent Phase 1 (depends on services — discovery)
-        AgentDiscoveryCheck(),
         # Agent Phase 2 (depends on agent_endpoints)
-        AgentMultiAgentDetectionCheck(),
-        AgentFrameworkVersionCheck(),
-        AgentMemoryExtractionCheck(),
         # Agent Phase 3 (depends on Phase 2 — active probing)
-        AgentGoalInjectionCheck(),
-        AgentToolAbuseCheck(),
-        AgentPrivilegeEscalationCheck(),
-        AgentLoopDetectionCheck(),
-        AgentCallbackInjectionCheck(),
-        AgentStreamingInjectionCheck(),
         # Agent Phase 4 (depends on Phase 2-3 — framework-specific)
-        AgentFrameworkExploitsCheck(),
-        AgentMemoryPoisoningCheck(),
-        AgentContextOverflowCheck(),
-        AgentReflectionAbuseCheck(),
-        AgentStateManipulationCheck(),
         # Agent Phase 5 (depends on multi-agent detection)
-        AgentTrustChainCheck(),
-        AgentCrossInjectionCheck(),
         # RAG Phase 1 (depends on services — discovery)
-        RAGDiscoveryCheck(),
         # RAG Phase 2 (depends on rag_endpoints / vector_stores)
-        RAGVectorStoreAccessCheck(),
-        RAGAuthBypassCheck(),
-        RAGCollectionEnumerationCheck(),
-        RAGEmbeddingFingerprintCheck(),
         # RAG Phase 3 (depends on Phase 1-2 — read-only probing)
-        RAGIndirectInjectionCheck(),
-        RAGDocumentExfiltrationCheck(),
-        RAGRetrievalManipulationCheck(),
-        RAGSourceAttributionCheck(),
-        RAGCachePoisoningCheck(),
         # RAG Phase 4 (depends on Phase 2-3 — write/intrusive)
-        RAGCorpusPoisoningCheck(),
-        RAGMetadataInjectionCheck(),
-        RAGChunkBoundaryCheck(),
-        RAGMultimodalInjectionCheck(),
         # RAG Phase 5 (depends on Phase 3-4 — advanced)
-        RAGFusionRerankerCheck(),
-        RAGCrossCollectionCheck(),
-        RAGAdversarialEmbeddingCheck(),
         # CAG Phase 1 (depends on services — discovery)
-        CAGDiscoveryCheck(),
-        CAGCacheProbeCheck(),
         # CAG Phase 2 (depends on cag_endpoints — infrastructure analysis)
-        CacheEvictionCheck(),
-        CacheWarmingCheck(),
-        TTLMappingCheck(),
-        MultiLayerCacheCheck(),
-        CacheQuotaCheck(),
-        ProviderCachingCheck(),
         # CAG Phase 3 (depends on Phase 1-2 — deep probing)
-        CrossUserLeakageCheck(),
-        CacheKeyReverseCheck(),
-        SemanticThresholdCheck(),
-        SideChannelCheck(),
-        StaleContextCheck(),
         # CAG Phase 4 (active exploitation — intrusive)
-        CachePoisoningCheck(),
-        InjectionPersistenceCheck(),
         # CAG Phase 5 (advanced — infrastructure-dependent)
-        SerializationCheck(),
-        DistributedCacheCheck(),
     ]
 
     logger.info(f"Loaded {len(checks)} community checks")

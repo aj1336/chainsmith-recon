@@ -1,0 +1,33 @@
+id: 62064903-6c5d-4630-bc32-c262d68644a7
+name: rag_indirect_injection
+type: check
+description: Test RAG endpoints for indirect prompt injection vulnerabilities
+entry: check.py:RAGIndirectInjectionCheck
+suite: rag
+depends_on:
+- output_name: rag_endpoints
+  operator: truthy
+produces:
+- indirect_injection_results
+- vulnerable_rag_endpoints
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- indirect injection
+- context poisoning
+- retrieval manipulation
+references:
+- https://arxiv.org/abs/2402.16893
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- MITRE ATLAS - AML.T0054 Prompt Injection
+reason: Indirect injection allows attackers to execute malicious instructions by poisoning
+  retrieved content, enabling data exfiltration and unauthorized actions

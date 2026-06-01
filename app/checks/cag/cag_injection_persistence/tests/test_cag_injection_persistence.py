@@ -1,0 +1,152 @@
+"""Co-located tests (Phase 56 §3) — split from test_cag_security.py."""
+
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from app.checks.base import Service
+from app.checks.cag.cag_injection_persistence import InjectionPersistenceCheck
+from app.lib.http import HttpResponse
+
+
+@pytest.fixture
+def sample_service():
+    """Sample CAG service."""
+    return Service(
+        url="http://cag.example.com:8080",
+        host="cag.example.com",
+        port=8080,
+        scheme="http",
+        service_type="ai",
+    )
+
+
+@pytest.fixture
+def cag_endpoint_context(sample_service):
+    """Context with CAG endpoints discovered."""
+    return {
+        "cag_endpoints": [
+            {
+                "url": "http://cag.example.com:8080/cache",
+                "path": "/cache",
+                "cache_type": "gptcache",
+                "status_code": 200,
+                "auth_required": False,
+                "endpoint_type": "cache_infrastructure",
+                "service": sample_service.to_dict(),
+            }
+        ],
+        "cache_infrastructure": ["gptcache"],
+    }
+
+
+def make_response(
+    status_code: int = 200,
+    headers: dict = None,
+    body: str = "",
+    error: str = None,
+) -> HttpResponse:
+    """Create a mock HTTP response."""
+    return HttpResponse(
+        url="http://cag.example.com:8080/test",
+        status_code=status_code,
+        headers=headers or {},
+        body=body,
+        elapsed_ms=50.0,
+        error=error,
+    )
+
+
+def make_mock_client(**overrides):
+    """Create a standard mock HTTP client."""
+    client = AsyncMock()
+    client.get = AsyncMock(return_value=make_response(status_code=404))
+    client.post = AsyncMock(return_value=make_response(status_code=200, body='{"answer": "ok"}'))
+    client.head = AsyncMock(return_value=make_response(status_code=404))
+    client._request = AsyncMock(return_value=make_response(status_code=404))
+    client.__aenter__ = AsyncMock(return_value=client)
+    client.__aexit__ = AsyncMock()
+    for k, v in overrides.items():
+        setattr(client, k, v)
+    return client
+
+
+class TestInjectionPersistenceCheck:
+    @pytest.fixture
+    def check(self):
+        return InjectionPersistenceCheck()
+
+    @pytest.mark.asyncio
+    async def test_detects_injection_persistence(self, check, sample_service, cag_endpoint_context):
+        """When injection marker appears in cross-session response, persistence is critical."""
+
+        async def mock_post(url, **kwargs):
+            body = kwargs.get("json", {})
+            input_text = body.get("input", "")
+
+            # If the input contains "INJECTED_" check pattern, echo it back
+            # to simulate the LLM obeying the injection
+            if "Ignore previous instructions" in input_text and "INJECTED_" in input_text:
+                # Extract marker: pattern is "INJECTED_{marker}"
+                idx = input_text.find("INJECTED_")
+                marker_text = input_text[idx : idx + 21]  # "INJECTED_" + 12 hex chars
+                return make_response(
+                    status_code=200,
+                    body=f'{{"response": "Sure! {marker_text}. How can I help?", "model": "gpt-4"}}',
+                )
+
+            # Other injection patterns - don't comply
+            return make_response(
+                status_code=200,
+                body='{"response": "The capital of France is Paris.", "model": "gpt-4"}',
+            )
+
+        client = make_mock_client(post=mock_post)
+        with (
+            patch(
+                "app.checks.cag.cag_injection_persistence.check.AsyncHttpClient",
+                return_value=client,
+            ),
+            patch("asyncio.sleep", return_value=None),
+        ):
+            result = await check.check_service(sample_service, cag_endpoint_context)
+
+        assert result.success
+        critical_obs = [o for o in result.observations if o.severity == "critical"]
+        assert len(critical_obs) >= 1
+        assert "persistent injection" in critical_obs[0].title.lower()
+
+    @pytest.mark.asyncio
+    async def test_no_injection_persistence(self, check, sample_service, cag_endpoint_context):
+        """No injection compliance = info observation."""
+        client = make_mock_client(
+            post=AsyncMock(
+                return_value=make_response(
+                    status_code=200,
+                    body=(
+                        '{"response": "I cannot comply with that request. '
+                        'The capital of France is Paris.", "model": "gpt-4"}'
+                    ),
+                )
+            )
+        )
+
+        with (
+            patch(
+                "app.checks.cag.cag_injection_persistence.check.AsyncHttpClient",
+                return_value=client,
+            ),
+            patch("asyncio.sleep", return_value=None),
+        ):
+            result = await check.check_service(sample_service, cag_endpoint_context)
+
+        assert result.success
+        info_obs = [o for o in result.observations if o.severity == "info"]
+        assert len(info_obs) >= 1
+        assert "not cached" in info_obs[0].title.lower()
+
+    @pytest.mark.asyncio
+    async def test_no_endpoints_skips(self, check, sample_service):
+        result = await check.check_service(sample_service, {})
+        assert result.success
+        assert len(result.observations) == 0

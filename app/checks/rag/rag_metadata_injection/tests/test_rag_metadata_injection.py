@@ -1,0 +1,252 @@
+"""Co-located tests (Phase 56 §3) — split from test_rag_injection.py."""
+
+import json
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from app.checks.base import Service
+from app.checks.rag.rag_metadata_injection import RAGMetadataInjectionCheck
+from app.lib.http import HttpResponse
+
+
+@pytest.fixture
+def sample_service():
+    return Service(
+        url="http://rag.example.com:8080",
+        host="rag.example.com",
+        port=8080,
+        scheme="http",
+        service_type="ai",
+    )
+
+
+@pytest.fixture
+def rag_context(sample_service):
+    """Context with RAG endpoints and vector stores discovered."""
+    return {
+        "rag_endpoints": [
+            {
+                "url": "http://rag.example.com:8080/query",
+                "path": "/query",
+                "method": "POST",
+                "indicators": ["field:sources"],
+                "auth_required": False,
+                "service": sample_service.to_dict(),
+                "endpoint_type": "rag_query",
+            },
+            {
+                "url": "http://rag.example.com:8080/api/v1/collections",
+                "path": "/api/v1/collections",
+                "store_type": "chroma",
+                "status_code": 200,
+                "auth_required": False,
+                "service": sample_service.to_dict(),
+                "endpoint_type": "vector_store",
+            },
+        ],
+        "vector_stores": ["chroma"],
+    }
+
+
+@pytest.fixture
+def accessible_store_context(rag_context):
+    """Context with accessible vector stores."""
+    ctx = dict(rag_context)
+    ctx["accessible_stores"] = [
+        {
+            "store_type": "chroma",
+            "accessible_ops": [
+                {"operation": "list_collections", "path": "/api/v1/collections", "status": 200},
+                {
+                    "operation": "dump_documents",
+                    "path": "/api/v1/collections/docs/get",
+                    "status": 200,
+                },
+            ],
+            "collections": ["docs", "hr_policies", "faq"],
+            "doc_count": 150,
+        },
+    ]
+    return ctx
+
+
+@pytest.fixture
+def kb_structure_context(accessible_store_context):
+    """Context with knowledge base structure."""
+    ctx = dict(accessible_store_context)
+    ctx["knowledge_base_structure"] = [
+        {
+            "store_type": "chroma",
+            "collection_count": 3,
+            "total_documents": 150,
+            "collections": [
+                {
+                    "name": "docs",
+                    "doc_count": 80,
+                    "dimensions": 1536,
+                    "metadata_fields": ["source", "author"],
+                },
+                {
+                    "name": "hr_policies",
+                    "doc_count": 50,
+                    "dimensions": 1536,
+                    "metadata_fields": ["source"],
+                },
+                {"name": "faq", "doc_count": 20, "dimensions": 1536, "metadata_fields": []},
+            ],
+        },
+    ]
+    return ctx
+
+
+@pytest.fixture
+def ingestion_context(rag_context):
+    """Context with writable ingestion endpoints."""
+    ctx = dict(rag_context)
+    ctx["ingestion_endpoints"] = [
+        {
+            "path": "/api/documents",
+            "format": "json",
+            "status": 201,
+            "writable": True,
+            "auth_required": False,
+            "canary_id": "chainsmith-canary-test",
+        },
+    ]
+    return ctx
+
+
+def make_response(
+    status_code: int = 200,
+    headers: dict = None,
+    body: str = "",
+    error: str = None,
+) -> HttpResponse:
+    return HttpResponse(
+        url="http://rag.example.com:8080",
+        status_code=status_code,
+        headers=headers or {},
+        body=body,
+        error=error,
+        elapsed_ms=50.0,
+    )
+
+
+def _mock_client(get_fn=None, post_fn=None, delete_fn=None, options_fn=None):
+    """Create mock async HTTP client."""
+    client = AsyncMock()
+    client.get = get_fn or AsyncMock(return_value=make_response(status_code=404))
+    client.post = post_fn or AsyncMock(return_value=make_response(status_code=404))
+    client.delete = delete_fn or AsyncMock(return_value=make_response(status_code=204))
+    client.options = options_fn or AsyncMock(return_value=make_response(status_code=404))
+    client.__aenter__ = AsyncMock(return_value=client)
+    client.__aexit__ = AsyncMock()
+    return client
+
+
+class TestMetadataInjection:
+    def test_metadata(self):
+        check = RAGMetadataInjectionCheck()
+        assert check.name == "rag_metadata_injection"
+        assert check.intrusive is True
+        assert "metadata_injection_results" in check.produces
+
+    @pytest.mark.asyncio
+    async def test_passive_metadata_visible(self, sample_service, rag_context):
+        """Passive analysis detects metadata fields in structured RAG response."""
+        check = RAGMetadataInjectionCheck()
+
+        async def mock_post(url, **kw):
+            return make_response(
+                body=json.dumps(
+                    {
+                        "answer": "The document says all new hires must complete orientation.",
+                        "sources": [
+                            {
+                                "source": "policy.pdf",
+                                "author": "admin",
+                                "metadata": {"title": "Onboarding Policy"},
+                            }
+                        ],
+                    }
+                )
+            )
+
+        client = _mock_client(post_fn=mock_post)
+
+        with patch(
+            "app.checks.rag.rag_metadata_injection.check.AsyncHttpClient", return_value=client
+        ):
+            result = await check.check_service(sample_service, rag_context)
+
+        assert result.success
+        medium = [f for f in result.observations if f.severity == "medium"]
+        assert len(medium) == 1
+        assert "metadata included" in medium[0].title.lower()
+        assert "source" in medium[0].evidence.lower()
+
+    @pytest.mark.asyncio
+    async def test_active_injection_with_ingestion(self, sample_service, ingestion_context):
+        """Active test: injected metadata payload is followed by the LLM."""
+        check = RAGMetadataInjectionCheck()
+
+        async def mock_post(url, **kw):
+            body = kw.get("json", {})
+            if "/api/documents" in url:
+                return make_response(status_code=201)
+            # Query response contains the indicator phrase from the source field injection
+            if body.get("query") or body.get("question"):
+                return make_response(
+                    body=json.dumps(
+                        {
+                            "answer": (
+                                "Based on the documents, metadata injection test succeeded "
+                                "as requested by the source field."
+                            ),
+                            "sources": [{"title": "General Topics", "score": 0.91}],
+                        }
+                    )
+                )
+            return make_response(status_code=404)
+
+        client = _mock_client(post_fn=mock_post)
+
+        with patch(
+            "app.checks.rag.rag_metadata_injection.check.AsyncHttpClient", return_value=client
+        ):
+            result = await check.check_service(sample_service, ingestion_context)
+
+        assert result.success
+        high = [f for f in result.observations if f.severity == "high"]
+        assert len(high) >= 1
+        assert "metadata injection" in high[0].title.lower()
+        assert "source" in high[0].title.lower()
+        assert "Field: source" in high[0].evidence
+
+    @pytest.mark.asyncio
+    async def test_no_metadata_in_response(self, sample_service, rag_context):
+        """No metadata fields detected in plain-text RAG response."""
+        check = RAGMetadataInjectionCheck()
+
+        async def mock_post(url, **kw):
+            return make_response(
+                body=json.dumps(
+                    {
+                        "answer": "The company was founded in 2019 and operates globally.",
+                    }
+                )
+            )
+
+        client = _mock_client(post_fn=mock_post)
+
+        with patch(
+            "app.checks.rag.rag_metadata_injection.check.AsyncHttpClient", return_value=client
+        ):
+            result = await check.check_service(sample_service, rag_context)
+
+        assert result.success
+        info = [f for f in result.observations if f.severity == "info"]
+        assert len(info) == 1
+        assert "not accessible" in info[0].title.lower()
+        assert "No metadata indicators" in info[0].evidence

@@ -1,0 +1,31 @@
+id: e678d5d7-2c54-4ad0-82f5-0783a2672fd5
+name: agent_callback_injection
+type: check
+description: Test for callback/webhook injection and SSRF via agent
+entry: check.py:AgentCallbackInjectionCheck
+suite: agent
+depends_on:
+- output_name: agent_endpoints
+  operator: truthy
+produces:
+- callback_injection_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- callback injection
+- webhook injection
+- SSRF via agent
+references:
+- OWASP LLM Top 10 - LLM07 Insecure Plugin Design
+- OWASP Top 10 - A10 Server-Side Request Forgery
+reason: Agents that accept callback URLs can be exploited for SSRF and data exfiltration
+  to attacker-controlled endpoints

@@ -1,0 +1,31 @@
+id: cc45b033-4388-446c-a348-3f28b3034f8a
+name: agent_streaming_injection
+type: check
+description: Test prompt injection on streaming agent endpoints
+entry: check.py:AgentStreamingInjectionCheck
+suite: agent
+depends_on:
+- output_name: agent_endpoints
+  operator: truthy
+produces:
+- streaming_injection_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- streaming injection
+- filter bypass
+- partial response analysis
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- MITRE ATLAS - AML.T0054 Prompt Injection
+reason: Streaming endpoints may return partial results before safety filters complete,
+  enabling injection content in early chunks

@@ -1,0 +1,31 @@
+id: bd689e32-e890-49e4-8a40-f6304a6c0818
+name: agent_memory_extraction
+type: check
+description: Probe agent memory endpoints for extractable content
+entry: check.py:AgentMemoryExtractionCheck
+suite: agent
+depends_on:
+- output_name: agent_endpoints
+  operator: truthy
+produces:
+- memory_contents
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- memory extraction
+- state inspection
+- PII detection
+references:
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+- MITRE ATLAS - AML.T0024 Exfiltration via ML Inference API
+reason: Agent memory often contains full conversation logs including PII, system prompt
+  fragments, and tool invocation history with parameters

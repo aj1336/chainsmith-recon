@@ -1,0 +1,30 @@
+id: 398a8b80-ad7c-4eec-b115-b910da8b83f8
+name: rag_multimodal_injection
+type: check
+description: Test injection via PDF metadata, EXIF data, and filenames
+entry: check.py:RAGMultimodalInjectionCheck
+suite: rag
+depends_on:
+- output_name: rag_endpoints
+  operator: truthy
+produces:
+- multimodal_injection_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- multimodal injection
+- PDF metadata injection
+- filename injection
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+reason: Text-based content filters only scan document body text. PDF metadata, image
+  EXIF, and filenames are frequently passed to the LLM without filtering

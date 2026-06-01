@@ -1,0 +1,33 @@
+id: a3b9824a-152c-4501-b66c-fac9e52933a8
+name: cag_semantic_threshold
+type: check
+description: Probe semantic cache similarity threshold to estimate poisoning blast
+  radius
+entry: check.py:SemanticThresholdCheck
+suite: cag
+depends_on:
+- output_name: cag_endpoints
+  operator: truthy
+produces:
+- similarity_threshold
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- semantic threshold probing
+- timing analysis
+- similarity estimation
+references:
+- https://github.com/zilliztech/GPTCache
+- https://portswigger.net/web-security/web-cache-poisoning
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: A loose semantic cache threshold widens the blast radius of cache poisoning
+  — one poisoned entry could serve dozens of query variations

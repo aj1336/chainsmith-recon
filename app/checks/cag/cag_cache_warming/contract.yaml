@@ -1,0 +1,31 @@
+id: 53da7e8d-ac69-46f9-a07f-9a67f355ead4
+name: cag_cache_warming
+type: check
+description: Test if cache warming endpoints accept arbitrary content
+entry: check.py:CacheWarmingCheck
+suite: cag
+depends_on:
+- output_name: cag_endpoints
+  operator: truthy
+produces:
+- warm_capability
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- cache warming
+- content injection
+- endpoint probing
+references:
+- https://portswigger.net/web-security/web-cache-poisoning
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: Accessible cache warming endpoints allow attackers to pre-populate caches
+  with malicious content served to all users

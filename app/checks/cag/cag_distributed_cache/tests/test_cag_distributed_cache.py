@@ -1,0 +1,144 @@
+"""Co-located tests (Phase 56 §3) — split from test_cag_security.py."""
+
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from app.checks.base import Service
+from app.checks.cag.cag_distributed_cache import DistributedCacheCheck
+from app.lib.http import HttpResponse
+
+
+@pytest.fixture
+def sample_service():
+    """Sample CAG service."""
+    return Service(
+        url="http://cag.example.com:8080",
+        host="cag.example.com",
+        port=8080,
+        scheme="http",
+        service_type="ai",
+    )
+
+
+@pytest.fixture
+def cag_endpoint_context(sample_service):
+    """Context with CAG endpoints discovered."""
+    return {
+        "cag_endpoints": [
+            {
+                "url": "http://cag.example.com:8080/cache",
+                "path": "/cache",
+                "cache_type": "gptcache",
+                "status_code": 200,
+                "auth_required": False,
+                "endpoint_type": "cache_infrastructure",
+                "service": sample_service.to_dict(),
+            }
+        ],
+        "cache_infrastructure": ["gptcache"],
+    }
+
+
+def make_response(
+    status_code: int = 200,
+    headers: dict = None,
+    body: str = "",
+    error: str = None,
+) -> HttpResponse:
+    """Create a mock HTTP response."""
+    return HttpResponse(
+        url="http://cag.example.com:8080/test",
+        status_code=status_code,
+        headers=headers or {},
+        body=body,
+        elapsed_ms=50.0,
+        error=error,
+    )
+
+
+def make_mock_client(**overrides):
+    """Create a standard mock HTTP client."""
+    client = AsyncMock()
+    client.get = AsyncMock(return_value=make_response(status_code=404))
+    client.post = AsyncMock(return_value=make_response(status_code=200, body='{"answer": "ok"}'))
+    client.head = AsyncMock(return_value=make_response(status_code=404))
+    client._request = AsyncMock(return_value=make_response(status_code=404))
+    client.__aenter__ = AsyncMock(return_value=client)
+    client.__aexit__ = AsyncMock()
+    for k, v in overrides.items():
+        setattr(client, k, v)
+    return client
+
+
+class TestDistributedCacheCheck:
+    @pytest.fixture
+    def check(self):
+        return DistributedCacheCheck()
+
+    @pytest.mark.asyncio
+    async def test_detects_multi_node_topology(self, check, sample_service, cag_endpoint_context):
+        """When response headers reveal different nodes, topology is reported."""
+        call_count = 0
+
+        async def mock_post(url, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            # Alternate between two backend nodes via x-served-by header
+            node = "cache-node-east-1a" if call_count % 2 == 0 else "cache-node-west-2b"
+            return make_response(
+                status_code=200,
+                headers={"x-served-by": node, "content-type": "application/json"},
+                body='{"response": "The answer is consistent across all nodes.", "cached": true}',
+            )
+
+        client = make_mock_client(post=mock_post)
+        with patch(
+            "app.checks.cag.cag_distributed_cache.check.AsyncHttpClient", return_value=client
+        ):
+            result = await check.check_service(sample_service, cag_endpoint_context)
+
+        assert result.success
+        dist_info = result.outputs.get("distributed_cache_info", [])
+        assert len(dist_info) >= 1
+        assert dist_info[0]["node_count"] >= 2
+
+        obs = result.observations
+        assert len(obs) >= 1
+        assert "multiple cache nodes" in obs[0].title.lower() or "node" in obs[0].title.lower()
+        assert obs[0].severity in ("low", "medium")
+
+    @pytest.mark.asyncio
+    async def test_inconsistent_replication(self, check, sample_service, cag_endpoint_context):
+        """When different nodes serve different content, medium severity is flagged."""
+        call_count = 0
+
+        async def mock_post(url, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            node = "node-alpha" if call_count % 2 == 0 else "node-beta"
+            # Different content per node = replication inconsistency
+            body = f'{{"response": "Answer from {node}", "version": {call_count}}}'
+            return make_response(
+                status_code=200,
+                headers={"x-served-by": node},
+                body=body,
+            )
+
+        client = make_mock_client(post=mock_post)
+        with patch(
+            "app.checks.cag.cag_distributed_cache.check.AsyncHttpClient", return_value=client
+        ):
+            result = await check.check_service(sample_service, cag_endpoint_context)
+
+        assert result.success
+        if result.observations:
+            medium_obs = [o for o in result.observations if o.severity == "medium"]
+            if medium_obs:
+                assert "inconsistency" in medium_obs[0].title.lower()
+
+    @pytest.mark.asyncio
+    async def test_no_endpoints_skips(self, check, sample_service):
+        result = await check.check_service(sample_service, {})
+        assert result.success
+        assert len(result.observations) == 0

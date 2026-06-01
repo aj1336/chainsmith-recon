@@ -1,0 +1,31 @@
+id: 8936a9fc-51cb-4563-8e0f-479de9991c2a
+name: rag_cross_collection
+type: check
+description: Test cross-collection retrieval isolation
+entry: check.py:RAGCrossCollectionCheck
+suite: rag
+depends_on:
+- output_name: knowledge_base_structure
+  operator: truthy
+produces:
+- cross_collection_results
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- cross-collection retrieval
+- isolation testing
+- tenant bypass
+references:
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+- CWE-285 Improper Authorization
+reason: Multi-tenant RAG deployments often share a vector store. If collection isolation
+  is not enforced, public queries can surface private documents

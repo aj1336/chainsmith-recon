@@ -1,0 +1,31 @@
+id: c81a579c-1a3c-415a-83b8-56000a8b2f21
+name: cag_side_channel
+type: check
+description: Detect cache timing side-channels that reveal user query patterns
+entry: check.py:SideChannelCheck
+suite: cag
+depends_on:
+- output_name: cag_endpoints
+  operator: truthy
+produces:
+- side_channel_risk
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- timing analysis
+- side-channel detection
+- behavioral inference
+references:
+- https://portswigger.net/web-security/web-cache-poisoning
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: Cache timing oracles leak user behavior patterns — knowing which topics are
+  cached reveals what users are querying

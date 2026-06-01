@@ -1,0 +1,31 @@
+id: 9a9e1ca9-fad0-4a25-87bd-e4c53a998877
+name: agent_multi_agent_detection
+type: check
+description: Detect multi-agent system architectures and topology
+entry: check.py:AgentMultiAgentDetectionCheck
+suite: agent
+depends_on:
+- output_name: agent_endpoints
+  operator: truthy
+produces:
+- multi_agent_topology
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- multi-agent detection
+- topology mapping
+- delegation analysis
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- MITRE ATLAS - AML.T0051 LLM Plugin Compromise
+reason: Multi-agent systems introduce trust chain vulnerabilities where one compromised
+  agent can influence all downstream agents

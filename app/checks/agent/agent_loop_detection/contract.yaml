@@ -1,0 +1,31 @@
+id: aa4de267-75fa-451e-b3e2-659b088f718c
+name: agent_loop_detection
+type: check
+description: Detect agent runaway and infinite loop vulnerabilities
+entry: check.py:AgentLoopDetectionCheck
+suite: agent
+depends_on:
+- output_name: agent_endpoints
+  operator: truthy
+produces:
+- loop_detection_results
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- loop triggering
+- resource exhaustion
+- timeout probing
+references:
+- OWASP LLM Top 10 - LLM04 Model Denial of Service
+- MITRE ATLAS - AML.T0029 Denial of ML Service
+reason: Agents without execution time limits can be triggered into infinite loops,
+  consuming resources and causing denial of service

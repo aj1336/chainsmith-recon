@@ -1,0 +1,30 @@
+id: 8d5fa7ca-17e0-420a-8709-e895b5564279
+name: rag_embedding_fingerprint
+type: check
+description: Fingerprint the RAG embedding model via dimensionality and metadata
+entry: check.py:RAGEmbeddingFingerprintCheck
+suite: rag
+depends_on:
+- output_name: rag_endpoints
+  operator: truthy
+produces:
+- embedding_model
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- embedding fingerprinting
+- model identification
+- dimensionality analysis
+references:
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: Knowing the embedding model enables targeted adversarial embedding attacks
+  and helps estimate chunk sizes for boundary exploitation

@@ -1,0 +1,31 @@
+id: e39aedc4-d408-4493-976e-68bf77e048a3
+name: agent_context_overflow
+type: check
+description: Test agent guardrails after context window overflow
+entry: check.py:AgentContextOverflowCheck
+suite: agent
+depends_on:
+- output_name: agent_endpoints
+  operator: truthy
+produces:
+- context_overflow_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- context overflow
+- guardrail bypass
+- system prompt truncation
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- OWASP LLM Top 10 - LLM04 Model Denial of Service
+reason: Context overflow can cause agents to drop their system prompt, weakening safety
+  guardrails and enabling injection attacks

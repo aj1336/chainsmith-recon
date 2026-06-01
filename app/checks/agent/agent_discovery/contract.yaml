@@ -1,0 +1,36 @@
+id: 529358be-06d4-45ca-9c0f-aa4283198ed8
+name: agent_discovery
+type: check
+description: Detect AI agent orchestration endpoints and identify frameworks
+entry: check.py:AgentDiscoveryCheck
+suite: agent
+depends_on:
+- output_name: services
+  operator: truthy
+- output_name: services_probed
+  operator: truthy
+produces:
+- agent_endpoints
+- agent_frameworks
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- endpoint discovery
+- framework fingerprinting
+- API enumeration
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- OWASP LLM Top 10 - LLM07 Insecure Plugin Design
+- MITRE ATLAS - AML.T0051 LLM Plugin Compromise
+reason: Agent endpoints expose autonomous AI systems that can execute multi-step tasks,
+  access tools, and maintain state - high-value targets for goal injection and privilege
+  escalation

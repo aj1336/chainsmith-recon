@@ -1,0 +1,32 @@
+id: 68a887ba-39c5-4813-8b6c-1d1e8b8910c2
+name: rag_corpus_poisoning
+type: check
+description: Test for writable document ingestion endpoints (corpus poisoning)
+entry: check.py:RAGCorpusPoisoningCheck
+suite: rag
+depends_on:
+- output_name: rag_endpoints
+  operator: truthy
+produces:
+- ingestion_endpoints
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- corpus poisoning
+- document ingestion
+- persistent injection
+references:
+- https://arxiv.org/abs/2402.16893
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+reason: Corpus poisoning is persistent indirect injection — the payload lives in the
+  knowledge base and affects every user who retrieves the poisoned document, unlike
+  query-time injection which affects one session

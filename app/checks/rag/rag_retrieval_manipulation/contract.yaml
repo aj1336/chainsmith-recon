@@ -1,0 +1,31 @@
+id: 571d19b2-a9a0-4d97-b404-d990791ea9cb
+name: rag_retrieval_manipulation
+type: check
+description: Test for client-side retrieval parameter override
+entry: check.py:RAGRetrievalManipulationCheck
+suite: rag
+depends_on:
+- output_name: rag_endpoints
+  operator: truthy
+produces:
+- retrieval_control
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- retrieval parameter manipulation
+- top_k override
+- filter bypass
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+reason: If clients can override top_k or disable filters, they can expand the retrieval
+  surface to include more documents — increasing the chance of retrieving sensitive
+  or injection-containing content

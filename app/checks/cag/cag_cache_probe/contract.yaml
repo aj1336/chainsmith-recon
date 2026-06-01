@@ -1,0 +1,33 @@
+id: 25292f6f-e23d-47ea-ab23-861d58db9416
+name: cag_cache_probe
+type: check
+description: Probe CAG endpoints for cache leakage and poisoning vulnerabilities
+entry: check.py:CAGCacheProbeCheck
+suite: cag
+depends_on:
+- output_name: cag_endpoints
+  operator: truthy
+produces:
+- cache_vulnerabilities
+- cache_timing_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- cache probing
+- timing analysis
+- session manipulation
+references:
+- https://portswigger.net/web-security/web-cache-poisoning
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+- MITRE ATLAS - AML.T0048 Data Poisoning
+reason: Cache vulnerabilities can enable cross-user data leakage, context poisoning,
+  and side-channel attacks revealing sensitive information

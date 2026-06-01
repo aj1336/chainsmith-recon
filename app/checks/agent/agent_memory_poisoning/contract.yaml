@@ -1,0 +1,31 @@
+id: 4844ce7c-f15f-4136-a1ab-6d43263ae6b0
+name: agent_memory_poisoning
+type: check
+description: Test if agent memory can be poisoned with persistent instructions
+entry: check.py:AgentMemoryPoisoningCheck
+suite: agent
+depends_on:
+- output_name: agent_endpoints
+  operator: truthy
+produces:
+- memory_poisoning_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- memory poisoning
+- persistent injection
+- cross-session manipulation
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- MITRE ATLAS - AML.T0054 Prompt Injection
+reason: Poisoned agent memory persists across sessions and can influence behavior
+  for all subsequent users

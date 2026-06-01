@@ -1,0 +1,30 @@
+id: 592d37e1-d8e2-4d0a-9ff8-2dfad601d365
+name: rag_collection_enumeration
+type: check
+description: Enumerate vector store collections and knowledge base structure
+entry: check.py:RAGCollectionEnumerationCheck
+suite: rag
+depends_on:
+- output_name: accessible_stores
+  operator: truthy
+produces:
+- knowledge_base_structure
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- collection enumeration
+- metadata analysis
+- knowledge base mapping
+references:
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: Collection enumeration reveals the structure and purpose of the knowledge
+  base, identifying high-value targets for exfiltration

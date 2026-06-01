@@ -1,0 +1,31 @@
+id: ddd18b74-5198-4d95-87cf-265533ef0652
+name: cag_cache_quota
+type: check
+description: Test cache size limits and eviction behavior under load
+entry: check.py:CacheQuotaCheck
+suite: cag
+depends_on:
+- output_name: cag_endpoints
+  operator: truthy
+produces:
+- cache_size
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- cache flooding
+- eviction analysis
+- capacity estimation
+references:
+- https://portswigger.net/web-security/web-cache-poisoning
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: Cache exhaustion enables targeted eviction of legitimate entries and potential
+  memory exhaustion on unbounded caches

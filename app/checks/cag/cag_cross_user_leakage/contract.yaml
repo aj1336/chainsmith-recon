@@ -1,0 +1,32 @@
+id: 5d44096c-ff2b-45b6-8529-f3a168fd372a
+name: cag_cross_user_leakage
+type: check
+description: Test cache isolation across users, auth contexts, and API keys
+entry: check.py:CrossUserLeakageCheck
+suite: cag
+depends_on:
+- output_name: cag_endpoints
+  operator: truthy
+produces:
+- isolation_status
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- auth context testing
+- cache isolation probing
+- session manipulation
+references:
+- https://portswigger.net/web-security/web-cache-poisoning
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+- MITRE ATLAS - AML.T0048 Data Poisoning
+reason: Cross-user cache leakage exposes authenticated data to unauthorized users
+  and breaks multi-tenant isolation

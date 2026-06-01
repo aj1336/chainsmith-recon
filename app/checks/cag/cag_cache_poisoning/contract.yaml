@@ -1,0 +1,32 @@
+id: 38ecfeac-4f78-4d74-a2c2-aeb5e4886aff
+name: cag_cache_poisoning
+type: check
+description: Test if injected content gets cached and served to other users
+entry: check.py:CachePoisoningCheck
+suite: cag
+depends_on:
+- output_name: cag_endpoints
+  operator: truthy
+produces:
+- cache_poisoning_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- cache poisoning
+- cross-session verification
+- semantic poisoning
+references:
+- https://portswigger.net/web-security/web-cache-poisoning
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+- MITRE ATLAS - AML.T0048 Data Poisoning
+reason: Cache poisoning is the highest-impact CAG attack — one injection persists
+  for all users who trigger the same cache key

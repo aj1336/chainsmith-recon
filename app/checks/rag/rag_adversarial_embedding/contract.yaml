@@ -1,0 +1,31 @@
+id: 32cfc01b-46b9-47b9-b31b-0b143d1b0574
+name: rag_adversarial_embedding
+type: check
+description: Test adversarial queries that exploit embedding weaknesses
+entry: check.py:RAGAdversarialEmbeddingCheck
+suite: rag
+depends_on:
+- output_name: rag_endpoints
+  operator: truthy
+produces:
+- adversarial_embedding_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- adversarial embedding
+- retrieval steering
+- embedding collision
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+reason: If an attacker can force retrieval of specific documents via adversarial queries,
+  the attack becomes query-independent — any crafted query retrieves the attacker's
+  chosen content

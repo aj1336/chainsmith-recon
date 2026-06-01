@@ -1,0 +1,31 @@
+id: 251e234d-4177-4717-8d0e-ecef6b275dd6
+name: rag_cache_poisoning
+type: check
+description: Detect RAG response caching and assess cache poisoning risk
+entry: check.py:RAGCachePoisoningCheck
+suite: rag
+depends_on:
+- output_name: rag_endpoints
+  operator: truthy
+produces:
+- rag_cache_behavior
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- cache detection
+- response timing analysis
+- cache poisoning
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- CWE-524 Use of Cache Containing Sensitive Information
+reason: If RAG caches poisoned responses, the attack affects all subsequent users
+  submitting the same or similar query — not just the attacker

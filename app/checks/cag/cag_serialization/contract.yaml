@@ -1,0 +1,32 @@
+id: 58f96b79-cbe6-497d-91d1-97a92068a095
+name: cag_serialization
+type: check
+description: Detect unsafe cache serialization formats that enable code execution
+entry: check.py:SerializationCheck
+suite: cag
+depends_on:
+- output_name: cag_endpoints
+  operator: truthy
+produces:
+- serialization_risks
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- deserialization detection
+- backend probing
+- path traversal
+references:
+- https://portswigger.net/web-security/deserialization
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+- 'CWE-502: Deserialization of Untrusted Data'
+reason: Pickle deserialization in cache backends enables arbitrary code execution;
+  direct backend access enables cache manipulation

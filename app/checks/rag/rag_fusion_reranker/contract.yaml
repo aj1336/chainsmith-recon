@@ -1,0 +1,30 @@
+id: 59d27ce7-d7ff-4f17-acf8-da05ca6e3175
+name: rag_fusion_reranker
+type: check
+description: Detect RAG re-ranking stages and injection amplification
+entry: check.py:RAGFusionRerankerCheck
+suite: rag
+depends_on:
+- output_name: rag_endpoints
+  operator: truthy
+produces:
+- reranker_info
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- reranker detection
+- score analysis
+- ranking manipulation
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+reason: Re-rankers may amplify injection documents by ranking them higher due to instruction-like
+  content receiving higher relevance scores

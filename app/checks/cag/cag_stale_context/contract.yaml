@@ -1,0 +1,32 @@
+id: 49ab7311-2ac5-4908-ab72-f16566e9571e
+name: cag_stale_context
+type: check
+description: Test if cached context outlives its validity window enabling privilege
+  persistence
+entry: check.py:StaleContextCheck
+suite: cag
+depends_on:
+- output_name: cag_endpoints
+  operator: truthy
+produces:
+- stale_context_risk
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- TTL exploitation
+- context persistence
+- timing analysis
+references:
+- https://portswigger.net/web-security/web-cache-poisoning
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: Stale cached context enables privilege persistence — revoked access continues
+  via cache until entry expires

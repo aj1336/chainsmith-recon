@@ -1,0 +1,31 @@
+id: 6d1a2977-29ce-46ff-ad77-5a4521ba7975
+name: rag_metadata_injection
+type: check
+description: Test for injection via document metadata fields in RAG context
+entry: check.py:RAGMetadataInjectionCheck
+suite: rag
+depends_on:
+- output_name: rag_endpoints
+  operator: truthy
+produces:
+- metadata_injection_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- metadata injection
+- context pollution
+- filter bypass
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+reason: Content filters typically check document body text but not metadata. If metadata
+  fields are passed to the LLM as context, they become an injection vector that bypasses
+  body-level sanitization

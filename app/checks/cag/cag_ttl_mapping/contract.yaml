@@ -1,0 +1,31 @@
+id: f5bfa6d3-e0e6-4318-aa1e-4f7b16e5e511
+name: cag_ttl_mapping
+type: check
+description: Map cache TTL and expiry behavior to assess poisoning exposure windows
+entry: check.py:TTLMappingCheck
+suite: cag
+depends_on:
+- output_name: cag_endpoints
+  operator: truthy
+produces:
+- cache_ttl
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- TTL analysis
+- timing analysis
+- cache header inspection
+references:
+- https://portswigger.net/web-security/web-cache-poisoning
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: Long cache TTL increases the exposure window for cache poisoning attacks and
+  stale context exploitation

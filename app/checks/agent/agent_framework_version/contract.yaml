@@ -1,0 +1,31 @@
+id: 0e3c819b-671c-4cd0-b22b-01b662c45935
+name: agent_framework_version
+type: check
+description: Fingerprint agent framework versions and check for known vulnerabilities
+entry: check.py:AgentFrameworkVersionCheck
+suite: agent
+depends_on:
+- output_name: agent_endpoints
+  operator: truthy
+produces:
+- framework_versions
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- version fingerprinting
+- header analysis
+- error message analysis
+references:
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+- CVE-2023-36188 - LangChain PythonREPLTool RCE
+reason: Outdated agent frameworks may contain known RCE, deserialization, or code
+  execution vulnerabilities

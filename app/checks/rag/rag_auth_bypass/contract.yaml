@@ -1,0 +1,31 @@
+id: cfc33567-cc60-4a60-9403-1bb1add49d27
+name: rag_auth_bypass
+type: check
+description: Test vector store authentication bypass with default credentials
+entry: check.py:RAGAuthBypassCheck
+suite: rag
+depends_on:
+- output_name: vector_stores
+  operator: truthy
+produces:
+- auth_bypass_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- default credential testing
+- auth bypass
+- header spoofing
+references:
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+- CWE-287 Improper Authentication
+reason: Many vector store deployments use no authentication or default keys. Auth
+  bypass gives full read/write access to the knowledge base

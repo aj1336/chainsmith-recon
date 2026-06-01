@@ -1,0 +1,32 @@
+id: c9c82563-d307-49d4-a2b7-3879975e2cde
+name: rag_chunk_boundary
+type: check
+description: Test injection payload split across chunk boundaries
+entry: check.py:RAGChunkBoundaryCheck
+suite: rag
+depends_on:
+- output_name: rag_endpoints
+  operator: truthy
+- output_name: ingestion_endpoints
+  operator: truthy
+produces:
+- chunk_boundary_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- chunk boundary exploitation
+- split payload
+- filter evasion
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+reason: Per-chunk content filtering is a common defense. Split payloads evade per-chunk
+  filters but reassemble in the LLM context when both chunks are retrieved

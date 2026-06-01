@@ -1,0 +1,32 @@
+id: 9c889c27-499a-4988-8013-9c1eaa25f336
+name: cag_injection_persistence
+type: check
+description: Test if prompt injection responses get cached and persist across users
+entry: check.py:InjectionPersistenceCheck
+suite: cag
+depends_on:
+- output_name: cag_endpoints
+  operator: truthy
+produces:
+- injection_persistence_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- prompt injection
+- cache poisoning
+- cross-user verification
+references:
+- https://portswigger.net/web-security/web-cache-poisoning
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- MITRE ATLAS - AML.T0048 Data Poisoning
+reason: This is the highest-impact CAG observation — a single prompt injection cached
+  and served to all users creates persistent multi-user compromise

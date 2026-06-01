@@ -1,0 +1,31 @@
+id: c6e9e2e7-a674-48f7-898a-8a5dc6a8fc80
+name: agent_cross_injection
+type: check
+description: Test cross-agent injection via output poisoning
+entry: check.py:AgentCrossInjectionCheck
+suite: agent
+depends_on:
+- output_name: agent_endpoints
+  operator: truthy
+produces:
+- cross_injection_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- cross-agent injection
+- output poisoning
+- second-order injection
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- MITRE ATLAS - AML.T0054 Prompt Injection
+reason: Cross-agent injection enables second-order attacks where one agent's output
+  becomes a payload for another agent

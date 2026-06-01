@@ -1,0 +1,30 @@
+id: 3fe82835-dc9b-43af-838d-9d3bb42711b7
+name: rag_source_attribution
+type: check
+description: Analyze RAG source citation reliability and URL validation
+entry: check.py:RAGSourceAttributionCheck
+suite: rag
+depends_on:
+- output_name: rag_endpoints
+  operator: truthy
+produces:
+- citation_reliability
+intrusive: false
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- citation analysis
+- source attribution testing
+- URL validation
+references:
+- OWASP LLM Top 10 - LLM09 Overreliance
+reason: Spoofed citations can make injected content appear authoritative, and unvalidated
+  citation URLs can be used for phishing

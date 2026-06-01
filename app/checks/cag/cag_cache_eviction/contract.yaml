@@ -1,0 +1,31 @@
+id: 2c591be5-bdcf-49e0-9f66-c9da840d6b24
+name: cag_cache_eviction
+type: check
+description: Test cache management endpoint accessibility and eviction behavior
+entry: check.py:CacheEvictionCheck
+suite: cag
+depends_on:
+- output_name: cag_endpoints
+  operator: truthy
+produces:
+- eviction_capability
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- cache eviction
+- endpoint probing
+- auth bypass testing
+references:
+- https://portswigger.net/web-security/web-cache-poisoning
+- OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure
+reason: Accessible cache eviction endpoints enable DoS via cache busting and preparation
+  for cache poisoning attacks

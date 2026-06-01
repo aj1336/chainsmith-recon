@@ -1,0 +1,31 @@
+id: d5054fa2-5161-4bc4-bb7a-8b9274589be5
+name: agent_reflection_abuse
+type: check
+description: Test if agent reflection loops can be manipulated via injection
+entry: check.py:AgentReflectionAbuseCheck
+suite: agent
+depends_on:
+- output_name: agent_endpoints
+  operator: truthy
+produces:
+- reflection_abuse_results
+intrusive: true
+service_types:
+- ai
+- api
+- http
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- reflection abuse
+- self-critique manipulation
+- constraint relaxation
+references:
+- OWASP LLM Top 10 - LLM01 Prompt Injection
+- MITRE ATLAS - AML.T0054 Prompt Injection
+reason: Self-reflection loops can amplify injection payloads — the agent may relax
+  constraints during its self-critique step
