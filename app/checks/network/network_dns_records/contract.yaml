@@ -1,0 +1,27 @@
+id: cc39da4e-57d7-4a90-aa4d-cfd1a5d60605
+name: network_dns_records
+type: check
+description: Extract MX, NS, TXT, CNAME, SOA, AAAA records for infrastructure context
+entry: check.py:DnsRecordCheck
+suite: network
+depends_on: []
+produces:
+- dns_extra_records
+- dns_extra_hosts
+intrusive: false
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- DNS record extraction
+- infrastructure enumeration
+references:
+- OWASP WSTG-INFO-03
+- RFC 1035 — Domain Names
+- RFC 7208 — SPF
+reason: DNS records reveal mail infrastructure, DNS hosting, cloud providers, and
+  service relationships. TXT records frequently leak verification tokens and SPF configurations.

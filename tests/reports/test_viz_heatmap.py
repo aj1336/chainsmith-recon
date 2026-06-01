@@ -116,7 +116,7 @@ class TestHeatmapDataLogic:
     SEV_ORDER = ["critical", "high", "medium", "low", "info"]
 
     SUITE_PATTERNS = {
-        "network": ["dns", "service_probe", "port"],
+        "network": ["dns", "network_service_probe", "port"],
         "web": ["header", "robots", "path", "openapi", "cors", "content"],
         "ai": [
             "llm",

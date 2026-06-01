@@ -107,7 +107,7 @@ class TestCoverageDataLogic:
     """Test the coverage matrix data assembly logic (pure Python mirror of buildCoverageData)."""
 
     SUITE_PATTERNS = {
-        "network": ["dns", "service_probe", "port"],
+        "network": ["dns", "network_service_probe", "port"],
         "web": ["header", "robots", "path", "openapi", "cors", "content"],
         "ai": [
             "llm",
@@ -292,7 +292,7 @@ class TestCoverageDataLogic:
         checks = [
             {"name": "dns_lookup", "status": "completed"},
             {"name": "header_check", "status": "completed"},
-            {"name": "port_scan", "status": "completed"},
+            {"name": "network_port_scan", "status": "completed"},
         ]
         result = self.build_coverage_data(observations, checks)
         assert result["isGlobal"] is True
@@ -304,8 +304,8 @@ class TestCoverageDataLogic:
         # header_check produced observations -> 'found'
         assert result["matrix"][host]["header_check"]["status"] == "found"
         # port_scan completed with no observations -> 'completed'
-        assert result["matrix"][host]["port_scan"]["status"] == "completed"
-        assert result["matrix"][host]["port_scan"]["observationCount"] == 0
+        assert result["matrix"][host]["network_port_scan"]["status"] == "completed"
+        assert result["matrix"][host]["network_port_scan"]["observationCount"] == 0
 
     def test_multi_host_view(self):
         observations = [
@@ -467,7 +467,7 @@ class TestCoverageDataRendering:
         ]
         checks = [
             {"name": "dns_lookup", "status": "completed"},
-            {"name": "port_scan", "status": "completed"},
+            {"name": "network_port_scan", "status": "completed"},
         ]
         result = TestCoverageDataLogic.build_coverage_data(observations, checks)
         host = result["hosts"][0]
@@ -475,8 +475,8 @@ class TestCoverageDataRendering:
         assert result["matrix"][host]["dns_lookup"]["status"] == "found"
         assert result["matrix"][host]["dns_lookup"]["observationCount"] == 1
         # port_scan has no observations -> stays completed
-        assert result["matrix"][host]["port_scan"]["status"] == "completed"
-        assert result["matrix"][host]["port_scan"]["observationCount"] == 0
+        assert result["matrix"][host]["network_port_scan"]["status"] == "completed"
+        assert result["matrix"][host]["network_port_scan"]["observationCount"] == 0
 
     def test_observation_count_accumulates_per_check(self):
         """Multiple observations for the same check accumulate correctly."""

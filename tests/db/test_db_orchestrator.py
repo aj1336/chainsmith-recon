@@ -38,7 +38,7 @@ def mock_state():
     state.checks_total = 3
     state.checks_completed = 3
     state.check_statuses = {
-        "port_scan": "completed",
+        "network_port_scan": "completed",
         "xss_check": "completed",
         "header_check": "failed",
     }

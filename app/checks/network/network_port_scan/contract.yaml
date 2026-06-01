@@ -1,0 +1,27 @@
+id: 56465f68-c90e-4774-86e1-d2914621266b
+name: network_port_scan
+type: check
+description: Scan TCP ports to discover services
+entry: check.py:PortScanCheck
+suite: network
+depends_on:
+- output_name: target_hosts
+  operator: truthy
+produces:
+- services
+intrusive: false
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- port scanning
+- service discovery
+- TCP connect scan
+references:
+- NIST SP 800-115
+- PTES - Vulnerability Analysis
+reason: Port scanning identifies what services are accessible on target hosts

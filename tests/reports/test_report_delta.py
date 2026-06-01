@@ -36,7 +36,7 @@ class TestDeltaReportMarkdown:
                 {
                     "title": "Open Port",
                     "severity": "info",
-                    "check_name": "port_scan",
+                    "check_name": "network_port_scan",
                     "host": "example.com",
                 },
             ],

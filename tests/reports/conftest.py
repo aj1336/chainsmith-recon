@@ -194,9 +194,9 @@ async def _create_populated_scan(
                 "observations": 1,
                 "duration_ms": 100,
             },
-            {"check": "port_scan", "suite": "network", "event": "started"},
+            {"check": "network_port_scan", "suite": "network", "event": "started"},
             {
-                "check": "port_scan",
+                "check": "network_port_scan",
                 "suite": "network",
                 "event": "failed",
                 "error_message": "Timeout",

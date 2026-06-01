@@ -1,0 +1,30 @@
+id: 5564cdff-d134-4890-bf39-f730398486f1
+name: network_http_method_enum
+type: check
+description: HTTP method enumeration and dangerous method detection
+entry: check.py:HttpMethodEnumCheck
+suite: network
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- http_methods
+intrusive: false
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- HTTP method enumeration
+- OPTIONS probing
+- cross-site tracing detection
+references:
+- OWASP WSTG-CONF-06 — Test HTTP Methods
+- CWE-16 — Configuration
+- CWE-749 — Exposed Dangerous Method or Function
+reason: Unexpected HTTP methods on production services indicate misconfiguration.
+  TRACE enables cross-site tracing (XST), while PUT/DELETE on AI endpoints may allow
+  unauthorized model modification or data deletion.

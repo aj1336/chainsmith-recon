@@ -71,7 +71,7 @@ async def test_snapshot_is_first_event(clean_registry):
     session = ScanSession(id="scan-A", target="example.com", phase="scanning")
     session.checks_total = 7
     session.checks_completed = 2
-    session.current_check = "port_scan"
+    session.current_check = "network_port_scan"
     clean_registry.register(session)
 
     gen = _stream(session)
@@ -94,7 +94,7 @@ async def test_live_event_is_forwarded(clean_registry):
     snapshot = await asyncio.wait_for(gen.__anext__(), timeout=1.0)
     assert b"event: snapshot" in snapshot
 
-    session.publish_event("check_started", {"name": "port_scan", "suite": "network"})
+    session.publish_event("check_started", {"name": "network_port_scan", "suite": "network"})
     session.mark_terminal("complete")
 
     frames = await _drain(session, gen, max_frames=5, timeout=2.0)

@@ -74,8 +74,8 @@ def test_shared_container_refs_flow_through():
     shared_event = asyncio.Event()
     s = _make(check_statuses=shared_statuses, pause_event=shared_event)
 
-    shared_statuses["port_scan"] = "running"
-    assert s.check_statuses["port_scan"] == "running"
+    shared_statuses["network_port_scan"] = "running"
+    assert s.check_statuses["network_port_scan"] == "running"
     assert s.pause_event is shared_event
 
 

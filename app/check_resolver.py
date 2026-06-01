@@ -261,9 +261,23 @@ _MCP_CHECK_NAMES = frozenset(
 )
 
 
+# The seven check suites. Used by infer_suite's prefix-first check (§14.4).
+_SUITE_NAMES = frozenset({"web", "network", "ai", "mcp", "agent", "rag", "cag"})
+
+
 def infer_suite(check_name: str) -> str:
     """Infer the suite name from a check name."""
     name_lower = check_name.lower()
+    # 56.7 (§14.4): uniform `<suite>_<name>` naming makes suite a pure prefix.
+    # Check it FIRST so already-prefixed names route exactly; bare names (not yet
+    # renamed this sweep) fall through to the legacy substring/_MCP_CHECK_NAMES
+    # logic below. Safe because suite words only ever appear as deliberate
+    # prefixes — no bare check name's first `_`-token is a suite word. When all
+    # four remaining suites carry prefixes, the fallback (and _MCP_CHECK_NAMES)
+    # can be deleted and this becomes the whole function.
+    prefix = name_lower.split("_", 1)[0]
+    if prefix in _SUITE_NAMES:
+        return prefix
     # MCP checks (Phase 56.5) had their redundant `mcp_` prefix stripped, so they
     # can no longer be matched by an "mcp" substring — and several now collide with
     # AI/agent substrings (discovery→agent_discovery, prompt_injection→

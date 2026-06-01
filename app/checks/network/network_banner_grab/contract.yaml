@@ -1,0 +1,30 @@
+id: 9215cb4b-b27c-46ea-b460-bb23596d1e54
+name: network_banner_grab
+type: check
+description: Banner grabbing and service identification on non-HTTP ports
+entry: check.py:BannerGrabCheck
+suite: network
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- banner_data
+intrusive: false
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- TCP banner grabbing
+- service fingerprinting
+- protocol probing
+references:
+- OWASP WSTG-INFO-02 — Fingerprint Web Server
+- CWE-200 — Exposure of Sensitive Information
+- CWE-306 — Missing Authentication for Critical Function
+reason: Non-HTTP services (databases, caches, message queues) often send version banners
+  on connect. An exposed Redis with no authentication is a critical observation. Service
+  version identification enables vulnerability correlation.

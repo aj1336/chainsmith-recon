@@ -70,9 +70,9 @@ class ScanAnalysisAdvisorConfig:
 
 FOLLOW_UP_RULES: list[dict] = [
     {
-        "trigger_check": "port_scan",
+        "trigger_check": "network_port_scan",
         "trigger_condition": "observations",
-        "suggest": "service_probe",
+        "suggest": "network_service_probe",
         "reason": "Port scan found open ports — service probing can identify what's running.",
         "confidence": "high",
     },
@@ -119,7 +119,7 @@ FOLLOW_UP_RULES: list[dict] = [
         "confidence": "high",
     },
     {
-        "trigger_check": "tls_analysis",
+        "trigger_check": "network_tls_analysis",
         "trigger_condition": "observations",
         "suggest": "hsts_preload",
         "reason": "TLS issues found — HSTS preload status should be verified.",

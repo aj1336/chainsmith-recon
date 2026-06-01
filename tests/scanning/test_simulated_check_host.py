@@ -25,7 +25,7 @@ class TestSimulatedCheckHostGeneration:
         """Hosts in output generate Service objects."""
         config = SimulationConfig(
             suite="network",
-            emulates="dns_enumeration",
+            emulates="network_dns_enumeration",
             target="example.local",
             disposition="hosts_found",
             output={
@@ -49,7 +49,7 @@ class TestSimulatedCheckHostGeneration:
         """Hosts in output generate Observation objects."""
         config = SimulationConfig(
             suite="network",
-            emulates="dns_enumeration",
+            emulates="network_dns_enumeration",
             target="example.local",
             disposition="hosts_found",
             output={"hosts": [{"name": "www.example.local", "ip": "10.0.0.1", "port": 80}]},
@@ -62,13 +62,13 @@ class TestSimulatedCheckHostGeneration:
         observation = result.observations[0]
         assert "www.example.local" in observation.title
         assert observation.severity == "info"
-        assert observation.check_name == "dns_enumeration"
+        assert observation.check_name == "network_dns_enumeration"
 
     async def test_host_service_metadata(self):
         """Service metadata includes IP and simulated flag."""
         config = SimulationConfig(
             suite="network",
-            emulates="dns_enumeration",
+            emulates="network_dns_enumeration",
             target="example.local",
             disposition="hosts_found",
             output={"hosts": [{"name": "www.example.local", "ip": "192.168.1.1", "port": 443}]},
@@ -85,7 +85,7 @@ class TestSimulatedCheckHostGeneration:
         """Host with custom scheme is respected."""
         config = SimulationConfig(
             suite="network",
-            emulates="dns_enumeration",
+            emulates="network_dns_enumeration",
             target="example.local",
             disposition="hosts_found",
             output={
@@ -111,7 +111,7 @@ class TestSimulatedCheckHostGeneration:
         """Host with service type is respected."""
         config = SimulationConfig(
             suite="network",
-            emulates="dns_enumeration",
+            emulates="network_dns_enumeration",
             target="example.local",
             disposition="hosts_found",
             output={
@@ -131,7 +131,7 @@ class TestSimulatedCheckHostGeneration:
         """Services are also available in outputs dict."""
         config = SimulationConfig(
             suite="network",
-            emulates="dns_enumeration",
+            emulates="network_dns_enumeration",
             target="example.local",
             disposition="hosts_found",
             output={"hosts": [{"name": "www.example.local", "ip": "10.0.0.1", "port": 80}]},
@@ -167,7 +167,7 @@ class TestSimulatedCheckDnsFormat:
         """DNS format (target_hosts + dns_records) creates observations but no services."""
         config = SimulationConfig(
             suite="network",
-            emulates="dns_enumeration",
+            emulates="network_dns_enumeration",
             target="example.local",
             disposition="hosts_found",
             output={
@@ -191,7 +191,7 @@ class TestSimulatedCheckDnsFormat:
         """DNS observations have correct content and no target/target_url."""
         config = SimulationConfig(
             suite="network",
-            emulates="dns_enumeration",
+            emulates="network_dns_enumeration",
             target="example.local",
             disposition="hosts_found",
             output={
@@ -210,13 +210,13 @@ class TestSimulatedCheckDnsFormat:
         assert "192.168.1.1" in observation.description
         assert observation.target is None
         assert observation.target_url is None
-        assert observation.check_name == "dns_enumeration"
+        assert observation.check_name == "network_dns_enumeration"
 
     async def test_dns_format_outputs_preserved(self):
         """DNS format preserves target_hosts and dns_records in outputs."""
         config = SimulationConfig(
             suite="network",
-            emulates="dns_enumeration",
+            emulates="network_dns_enumeration",
             target="example.local",
             disposition="hosts_found",
             output={
@@ -242,7 +242,7 @@ class TestSimulatedCheckDnsFormat:
         """Legacy hosts format (for non-DNS checks) still creates services."""
         config = SimulationConfig(
             suite="network",
-            emulates="port_scan",  # Not dns_enumeration
+            emulates="network_port_scan",  # Not dns_enumeration
             target="example.local",
             disposition="ports_found",
             output={"hosts": [{"host": "www.example.local", "ip": "10.0.1.10", "port": 8080}]},
@@ -269,7 +269,7 @@ class TestFactoryFunctions:
         """load_simulated_check returns configured SimulatedCheck."""
         yaml_content = """
 suite: network
-emulates: dns_enumeration
+emulates: network_dns_enumeration
 target: test.local
 disposition: success
 output:
@@ -281,7 +281,7 @@ output:
         check = load_simulated_check(yaml_file)
 
         assert isinstance(check, SimulatedCheck)
-        assert check.name == "dns_enumeration"
+        assert check.name == "network_dns_enumeration"
         assert check.suite == "network"
 
     def test_load_simulated_check_file_not_found(self, tmp_path: Path):
@@ -395,7 +395,7 @@ class TestRealSimulationFiles:
 
         check = load_simulated_check(yaml_file)
 
-        assert check.name == "dns_enumeration"
+        assert check.name == "network_dns_enumeration"
         assert check.suite == "network"
 
     async def test_run_dns_success(self, simulations_dir: Path):
@@ -413,7 +413,7 @@ class TestRealSimulationFiles:
         assert len(result.observations) >= 1, "DNS success should produce at least 1 observation"
         # Verify observations have expected check_name from the simulation
         for obs in result.observations:
-            assert obs.check_name == "dns_enumeration"
+            assert obs.check_name == "network_dns_enumeration"
 
     def test_load_dns_exception(self, simulations_dir: Path):
         """Load actual dns_exception.yaml file."""
@@ -458,4 +458,4 @@ class TestRealSimulationFiles:
             names.add(check.name)
 
         # Verify known simulation names are present
-        assert "dns_enumeration" in names, "dns_enumeration simulation should be loaded"
+        assert "network_dns_enumeration" in names, "dns_enumeration simulation should be loaded"

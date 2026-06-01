@@ -178,11 +178,15 @@ class TestAISuiteSuggestion:
     def test_suggests_ai_suite_for_api_target(self):
         advisor = _make_advisor(
             in_scope=["api.example.com"],
-            available_checks={"llm_endpoint_discovery", "prompt_leakage", "dns_enumeration"},
+            available_checks={
+                "llm_endpoint_discovery",
+                "prompt_leakage",
+                "network_dns_enumeration",
+            },
             check_metadata={
                 "llm_endpoint_discovery": {"suite": "ai"},
                 "prompt_leakage": {"suite": "ai"},
-                "dns_enumeration": {"suite": "network"},
+                "network_dns_enumeration": {"suite": "network"},
             },
         )
         recs = advisor.analyze()

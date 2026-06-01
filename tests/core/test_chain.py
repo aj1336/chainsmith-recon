@@ -123,10 +123,10 @@ class TestDependencyResolution:
 
     def test_infer_suite_from_name(self, orchestrator):
         """Test suite inference from check name."""
-        check = MockCheck("dns_enumeration")
+        check = MockCheck("network_dns_enumeration")
         orchestrator.add_checks([check])
 
-        assert orchestrator.nodes["dns_enumeration"].suite == "network"
+        assert orchestrator.nodes["network_dns_enumeration"].suite == "network"
 
     def test_infer_suite_mcp(self, orchestrator):
         """Test suite inference for MCP checks."""

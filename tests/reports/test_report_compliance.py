@@ -49,7 +49,7 @@ class TestComplianceReportMarkdown:
         content = result["content"]
         assert "Checks Performed" in content
         assert "| xss_reflected | web |" in content
-        assert "| port_scan | network |" in content
+        assert "| network_port_scan | network |" in content
 
     @pytest.mark.asyncio
     async def test_severity_summary(

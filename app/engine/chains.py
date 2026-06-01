@@ -120,8 +120,8 @@ CHAIN_PATTERNS = [
         "description": "Version disclosure enables targeted vulnerability research",
         "severity": "medium",
         "required_observations": [
-            {"check_name": "service_probe", "title_contains": "Technology"},
-            {"check_name": "service_probe", "title_contains": "Server"},
+            {"check_name": "network_service_probe", "title_contains": "Technology"},
+            {"check_name": "network_service_probe", "title_contains": "Server"},
         ],
         "exploitation_steps": [
             "Note the disclosed technology versions (e.g., vLLM/0.4.1)",
@@ -188,7 +188,7 @@ CHAIN_PATTERNS = [
         "title": "Multi-Service Architecture Reconnaissance",
         "description": "Multiple services discovered increases attack surface complexity",
         "severity": "medium",
-        "required_observations": [{"check_name": "dns_enumeration", "count_gte": 2}],
+        "required_observations": [{"check_name": "network_dns_enumeration", "count_gte": 2}],
         "exploitation_steps": [
             "Map relationships between discovered services",
             "Identify internal communication patterns",

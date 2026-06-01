@@ -94,36 +94,40 @@ class TestGapAnalysis:
     def test_detects_checks_blocked_by_missing_context(self):
         """Checks that never ran due to unmet conditions are flagged."""
         advisor = _make_advisor(
-            completed={"dns_enumeration"},
-            all_check_names={"dns_enumeration", "port_scan"},
+            completed={"network_dns_enumeration"},
+            all_check_names={"network_dns_enumeration", "network_port_scan"},
             context={"scope_domains": ["example.com"]},
             check_metadata={
-                "port_scan": {
+                "network_port_scan": {
                     "conditions": ["target_hosts truthy"],
                     "produces": ["services"],
                 },
             },
         )
         recs = advisor.analyze()
-        gap_recs = [r for r in recs if r.category == "gap_analysis" and r.check_name == "port_scan"]
+        gap_recs = [
+            r for r in recs if r.category == "gap_analysis" and r.check_name == "network_port_scan"
+        ]
         assert len(gap_recs) == 1
         assert "target_hosts" in gap_recs[0].reason
 
     def test_no_gap_when_check_ran(self):
         """Checks that completed should not appear in gap analysis."""
         advisor = _make_advisor(
-            completed={"dns_enumeration", "port_scan"},
-            all_check_names={"dns_enumeration", "port_scan"},
+            completed={"network_dns_enumeration", "network_port_scan"},
+            all_check_names={"network_dns_enumeration", "network_port_scan"},
             context={"target_hosts": ["1.2.3.4"], "services": []},
             check_metadata={
-                "port_scan": {
+                "network_port_scan": {
                     "conditions": ["target_hosts truthy"],
                     "produces": ["services"],
                 },
             },
         )
         recs = advisor.analyze()
-        gap_recs = [r for r in recs if r.check_name == "port_scan" and r.category == "gap_analysis"]
+        gap_recs = [
+            r for r in recs if r.check_name == "network_port_scan" and r.category == "gap_analysis"
+        ]
         assert len(gap_recs) == 0
 
     def test_no_gap_when_context_satisfied(self):
@@ -131,10 +135,10 @@ class TestGapAnalysis:
         should still show up (they were in never_ran)."""
         advisor = _make_advisor(
             completed=set(),
-            all_check_names={"port_scan"},
+            all_check_names={"network_port_scan"},
             context={"target_hosts": ["1.2.3.4"]},
             check_metadata={
-                "port_scan": {
+                "network_port_scan": {
                     "conditions": ["target_hosts truthy"],
                     "produces": ["services"],
                 },
@@ -142,7 +146,9 @@ class TestGapAnalysis:
         )
         recs = advisor.analyze()
         # port_scan never ran but context IS satisfied — no missing keys
-        gap_recs = [r for r in recs if r.check_name == "port_scan" and r.category == "gap_analysis"]
+        gap_recs = [
+            r for r in recs if r.check_name == "network_port_scan" and r.category == "gap_analysis"
+        ]
         assert len(gap_recs) == 0
 
 
@@ -154,12 +160,12 @@ class TestGapAnalysis:
 class TestPartialResults:
     def test_flags_failed_checks(self):
         advisor = _make_advisor(
-            failed={"service_probe"},
-            all_check_names={"service_probe"},
-            check_metadata={"service_probe": {"conditions": [], "produces": []}},
+            failed={"network_service_probe"},
+            all_check_names={"network_service_probe"},
+            check_metadata={"network_service_probe": {"conditions": [], "produces": []}},
         )
         recs = advisor.analyze()
-        failed_recs = [r for r in recs if r.check_name == "service_probe"]
+        failed_recs = [r for r in recs if r.check_name == "network_service_probe"]
         assert len(failed_recs) == 1
         assert "failed" in failed_recs[0].reason.lower()
 
@@ -233,8 +239,8 @@ class TestCoverageCrossReference:
     def test_flags_suite_with_zero_coverage(self):
         """A suite with available checks but none ran gets flagged."""
         advisor = _make_advisor(
-            completed={"dns_enumeration"},
-            all_check_names={"dns_enumeration", "llm_endpoint_discovery"},
+            completed={"network_dns_enumeration"},
+            all_check_names={"network_dns_enumeration", "llm_endpoint_discovery"},
             check_metadata={},
         )
         recs = advisor.analyze()
@@ -247,8 +253,18 @@ class TestCoverageCrossReference:
         """A suite with sufficient coverage is not flagged."""
         # Run enough network checks to exceed threshold (3)
         advisor = _make_advisor(
-            completed={"dns_enumeration", "port_scan", "tls_analysis", "service_probe"},
-            all_check_names={"dns_enumeration", "port_scan", "tls_analysis", "service_probe"},
+            completed={
+                "network_dns_enumeration",
+                "network_port_scan",
+                "network_tls_analysis",
+                "network_service_probe",
+            },
+            all_check_names={
+                "network_dns_enumeration",
+                "network_port_scan",
+                "network_tls_analysis",
+                "network_service_probe",
+            },
             check_metadata={},
         )
         recs = advisor.analyze()

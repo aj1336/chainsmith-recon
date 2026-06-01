@@ -67,7 +67,7 @@ class TestSimulationConfig:
         """Minimal valid config is parsed."""
         data = {
             "suite": "network",
-            "emulates": "dns_enumeration",
+            "emulates": "network_dns_enumeration",
             "target": "example.local",
             "disposition": "hosts_found",
         }
@@ -75,7 +75,7 @@ class TestSimulationConfig:
         config = SimulationConfig.from_dict(data)
 
         assert config.suite == "network"
-        assert config.emulates == "dns_enumeration"
+        assert config.emulates == "network_dns_enumeration"
         assert config.target == "example.local"
         assert config.disposition == "hosts_found"
         assert config.output == {}
@@ -85,7 +85,7 @@ class TestSimulationConfig:
         """Config with output section is parsed."""
         data = {
             "suite": "network",
-            "emulates": "dns_enumeration",
+            "emulates": "network_dns_enumeration",
             "target": "example.local",
             "disposition": "hosts_found",
             "output": {"hosts": [{"name": "www.example.local", "ip": "10.0.0.1", "port": 80}]},
@@ -100,7 +100,7 @@ class TestSimulationConfig:
         """Config with behavior section is parsed."""
         data = {
             "suite": "network",
-            "emulates": "dns_enumeration",
+            "emulates": "network_dns_enumeration",
             "target": "example.local",
             "disposition": "error",
             "behavior": {
@@ -120,7 +120,7 @@ class TestSimulationConfig:
         """Missing required field raises ValueError."""
         data = {
             "suite": "network",
-            "emulates": "dns_enumeration",
+            "emulates": "network_dns_enumeration",
             # missing target and disposition
         }
 

@@ -169,7 +169,7 @@ async def run_scan(
 
         # Seed DNS enumeration wordlist with scenario-declared known_hosts.
         if mgr.is_active and mgr.active.target.known_hosts:
-            from app.checks.network.dns_enumeration import DnsEnumerationCheck
+            from app.checks.network.network_dns_enumeration import DnsEnumerationCheck
 
             known = list(mgr.active.target.known_hosts)
             for check in checks:

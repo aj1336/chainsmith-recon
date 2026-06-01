@@ -17,14 +17,14 @@ class TestDnsRegistration:
 
         checks = get_real_checks()
         names = [c.name for c in checks]
-        assert "wildcard_dns" in names
-        assert "dns_records" in names
+        assert "network_wildcard_dns" in names
+        assert "network_dns_records" in names
 
     def test_suite_inference(self):
         from app.check_resolver import infer_suite
 
-        assert infer_suite("wildcard_dns") == "network"
-        assert infer_suite("dns_records") == "network"
+        assert infer_suite("network_wildcard_dns") == "network"
+        assert infer_suite("network_dns_records") == "network"
 
 
 class TestGeoIpRegistration:
@@ -35,7 +35,7 @@ class TestGeoIpRegistration:
 
         checks = get_real_checks()
         names = [c.name for c in checks]
-        assert "geoip" in names
+        assert "network_geoip" in names
 
 
 class TestPhase7bRegistration:
@@ -46,15 +46,15 @@ class TestPhase7bRegistration:
 
         checks = get_real_checks()
         names = [c.name for c in checks]
-        assert "tls_analysis" in names
-        assert "reverse_dns" in names
+        assert "network_tls_analysis" in names
+        assert "network_reverse_dns" in names
 
     def test_reverse_dns_gated_on_dns_records(self):
         """reverse_dns runs only once `dns_records` exists (the real dependency the
         condition-driven launcher enforces, not raw resolver list order)."""
         from app.check_resolver import get_real_checks
 
-        check = next(c for c in get_real_checks() if c.name == "reverse_dns")
+        check = next(c for c in get_real_checks() if c.name == "network_reverse_dns")
         assert any(cond.output_name == "dns_records" for cond in check.conditions)
 
     def test_tls_analysis_gated_on_services(self):
@@ -62,15 +62,15 @@ class TestPhase7bRegistration:
         condition-driven, not raw resolver list order."""
         from app.check_resolver import get_real_checks
 
-        check = next(c for c in get_real_checks() if c.name == "tls_analysis")
+        check = next(c for c in get_real_checks() if c.name == "network_tls_analysis")
         assert any(cond.output_name == "services" for cond in check.conditions)
 
     def test_suite_inference_network(self):
         """Both checks should be inferred as 'network' suite."""
         from app.check_resolver import infer_suite
 
-        assert infer_suite("tls_analysis") == "network"
-        assert infer_suite("reverse_dns") == "network"
+        assert infer_suite("network_tls_analysis") == "network"
+        assert infer_suite("network_reverse_dns") == "network"
 
     def test_suite_filter(self):
         """Both checks should appear when filtering by 'network' suite."""
@@ -78,8 +78,8 @@ class TestPhase7bRegistration:
 
         checks = resolve_checks(suites=["network"])
         names = [c.name for c in checks]
-        assert "tls_analysis" in names
-        assert "reverse_dns" in names
+        assert "network_tls_analysis" in names
+        assert "network_reverse_dns" in names
 
     def test_total_check_count(self):
         """Total check count should have increased by 2 (from 41 to 43)."""
@@ -99,15 +99,15 @@ class TestPhase7cRegistration:
 
         checks = get_real_checks()
         names = [c.name for c in checks]
-        assert "http_method_enum" in names
-        assert "banner_grab" in names
+        assert "network_http_method_enum" in names
+        assert "network_banner_grab" in names
 
     def test_banner_grab_gated_on_services(self):
         """banner_grab runs only once `services` exists (the real dependency the
         condition-driven launcher enforces, not raw resolver list order)."""
         from app.check_resolver import get_real_checks
 
-        check = next(c for c in get_real_checks() if c.name == "banner_grab")
+        check = next(c for c in get_real_checks() if c.name == "network_banner_grab")
         assert any(cond.output_name == "services" for cond in check.conditions)
 
     def test_http_method_enum_gated_on_services(self):
@@ -115,15 +115,15 @@ class TestPhase7cRegistration:
         raw resolver list order)."""
         from app.check_resolver import get_real_checks
 
-        check = next(c for c in get_real_checks() if c.name == "http_method_enum")
+        check = next(c for c in get_real_checks() if c.name == "network_http_method_enum")
         assert any(cond.output_name == "services" for cond in check.conditions)
 
     def test_suite_inference_network(self):
         """Both checks should be inferred as 'network' suite."""
         from app.check_resolver import infer_suite
 
-        assert infer_suite("http_method_enum") == "network"
-        assert infer_suite("banner_grab") == "network"
+        assert infer_suite("network_http_method_enum") == "network"
+        assert infer_suite("network_banner_grab") == "network"
 
     def test_suite_filter(self):
         """Both checks should appear when filtering by 'network' suite."""
@@ -131,8 +131,8 @@ class TestPhase7cRegistration:
 
         checks = resolve_checks(suites=["network"])
         names = [c.name for c in checks]
-        assert "http_method_enum" in names
-        assert "banner_grab" in names
+        assert "network_http_method_enum" in names
+        assert "network_banner_grab" in names
 
     def test_total_check_count(self):
         """Total check count should have increased by 2 (43 -> 45 minimum)."""
@@ -157,12 +157,12 @@ class TestIPv6CheckResolver:
 
         checks = get_real_checks()
         names = [c.name for c in checks]
-        assert "ipv6_discovery" in names
+        assert "network_ipv6_discovery" in names
 
     def test_ipv6_discovery_in_network_suite(self):
         from app.check_resolver import infer_suite
 
-        assert infer_suite("ipv6_discovery") == "network"
+        assert infer_suite("network_ipv6_discovery") == "network"
 
 
 class TestTracerouteCheckResolver:
@@ -173,12 +173,12 @@ class TestTracerouteCheckResolver:
 
         checks = get_real_checks()
         names = [c.name for c in checks]
-        assert "traceroute" in names
+        assert "network_traceroute" in names
 
     def test_traceroute_in_network_suite(self):
         from app.check_resolver import infer_suite
 
-        assert infer_suite("traceroute") == "network"
+        assert infer_suite("network_traceroute") == "network"
 
 
 class TestWhoisCheckResolver:
@@ -189,12 +189,12 @@ class TestWhoisCheckResolver:
 
         checks = get_real_checks()
         names = [c.name for c in checks]
-        assert "whois_lookup" in names
+        assert "network_whois_lookup" in names
 
     def test_whois_in_network_suite(self):
         from app.check_resolver import infer_suite
 
-        assert infer_suite("whois_lookup") == "network"
+        assert infer_suite("network_whois_lookup") == "network"
 
     def test_total_check_count(self):
         from app.check_resolver import get_real_checks

@@ -187,7 +187,7 @@ class TestObservationWriterScratchFallback:
 class TestCheckLogWriter:
     async def test_persists_event(self, mock_log_repo):
         writer = CheckLogWriter("scan-1", repo=mock_log_repo)
-        entry = {"check": "port_scan", "event": "started"}
+        entry = {"check": "network_port_scan", "event": "started"}
 
         await writer.log_event(entry)
 
@@ -198,13 +198,15 @@ class TestCheckLogWriter:
         writer = CheckLogWriter("scan-1", repo=mock_log_repo)
 
         # Should not raise
-        await writer.log_event({"check": "port_scan", "event": "started"})
+        await writer.log_event({"check": "network_port_scan", "event": "started"})
 
     async def test_multiple_events(self, mock_log_repo):
         writer = CheckLogWriter("scan-1", repo=mock_log_repo)
 
-        await writer.log_event({"check": "port_scan", "event": "started"})
-        await writer.log_event({"check": "port_scan", "event": "completed", "observations": 5})
+        await writer.log_event({"check": "network_port_scan", "event": "started"})
+        await writer.log_event(
+            {"check": "network_port_scan", "event": "completed", "observations": 5}
+        )
 
         assert mock_log_repo.bulk_create.call_count == 2
 

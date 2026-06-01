@@ -72,7 +72,7 @@ async def seeded_db(db):
                 "id": "f-003",
                 "title": "SSH Open",
                 "severity": "info",
-                "check_name": "port_scan",
+                "check_name": "network_port_scan",
                 "suite": "network",
                 "host": "api.example.com",
             },

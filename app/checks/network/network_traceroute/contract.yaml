@@ -1,0 +1,30 @@
+id: 3ff9121d-9987-4b31-8b3c-23db96fcd9d1
+name: network_traceroute
+type: check
+description: TCP-based network path tracing and CDN/WAF detection
+entry: check.py:TracerouteCheck
+suite: network
+depends_on:
+- output_name: dns_records
+  operator: truthy
+produces:
+- traceroute_data
+intrusive: false
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- TCP traceroute
+- network path analysis
+- CDN detection
+- hop enumeration
+references:
+- PTES - Intelligence Gathering
+- https://attack.mitre.org/techniques/T1590/
+reason: Network path analysis reveals CDN/WAF/reverse proxy presence in the path to
+  target hosts, which affects what service_probe results mean. Geographic routing
+  reveals data path for compliance analysis.

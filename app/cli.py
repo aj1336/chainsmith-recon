@@ -2506,6 +2506,56 @@ def dev_split_tests(path: str, dry_run: bool):
         click.echo(f"{prefix}source fully co-located → removed")
 
 
+@dev_group.command("rename-check")
+@click.argument("suite")
+@click.argument("old_name")
+@click.argument("new_name")
+@click.option("--dry-run", is_flag=True, help="Report actions without writing")
+def dev_rename_check(suite: str, old_name: str, new_name: str, dry_run: bool):
+    """Rename an already-migrated check folder old_name → new_name (§14.3)."""
+    _require_source_tree()
+    from app.dev import rename
+
+    res = rename.rename_check(suite, old_name, new_name, dry_run=dry_run)
+    _print_rename_result(res)
+
+
+@dev_group.command("rename-suite")
+@click.argument("suite")
+@click.option("--prefix", required=True, help="Prefix to add to every check, e.g. network_")
+@click.option(
+    "--rename-map",
+    "rename_map",
+    type=click.Path(),
+    help="rename-map.yaml to append old:new entries to (§14.5)",
+)
+@click.option("--dry-run", is_flag=True, help="Report actions without writing")
+def dev_rename_suite(suite: str, prefix: str, rename_map: str | None, dry_run: bool):
+    """Add a suite prefix to every check in a suite (§14.2 — uniform <suite>_<name>)."""
+    _require_source_tree()
+    from app.dev import rename
+
+    results = rename.rename_suite(
+        suite,
+        prefix,
+        rename_map_path=Path(rename_map) if rename_map else None,
+        dry_run=dry_run,
+    )
+    for res in results:
+        _print_rename_result(res)
+    click.echo(f"{'[dry-run] ' if dry_run else ''}renamed {len(results)} check(s) in '{suite}'")
+
+
+def _print_rename_result(res) -> None:
+    prefix = "[dry-run] " if res.dry_run else ""
+    click.echo(click.style(f"{prefix}{res.old_name} → {res.new_name}", fg="cyan"))
+    click.echo(f"  folder: {res.folder_from} → {res.folder_to}")
+    if res.module_codemod_files:
+        click.echo(f"  module-path codemod: {len(res.module_codemod_files)} file(s)")
+    if res.name_ref_files:
+        click.echo(f"  name-string sweep: {len(res.name_ref_files)} file(s)")
+
+
 def _print_migrate_result(res) -> None:
     prefix = "[dry-run] " if res.dry_run else ""
     click.echo(click.style(f"{prefix}{res.source}", fg="cyan"))

@@ -202,8 +202,12 @@ class TestListChecksCommand:
         client = _mock_client()
         client.get_checks.return_value = {
             "checks": [
-                {"name": "dns_enumeration", "suite": "network", "description": "DNS enum"},
-                {"name": "service_probe", "suite": "network", "description": "Service probe"},
+                {"name": "network_dns_enumeration", "suite": "network", "description": "DNS enum"},
+                {
+                    "name": "network_service_probe",
+                    "suite": "network",
+                    "description": "Service probe",
+                },
                 {"name": "header_analysis", "suite": "web", "description": "Header check"},
                 {"name": "llm_endpoint_discovery", "suite": "ai", "description": "LLM discovery"},
             ],
@@ -216,15 +220,19 @@ class TestListChecksCommand:
             assert "NETWORK" in result.output
             assert "WEB" in result.output
             assert "AI" in result.output
-            assert "dns_enumeration" in result.output
+            assert "network_dns_enumeration" in result.output
 
     def test_list_checks_suite_filter(self, runner):
         """list-checks --suite filters by suite."""
         client = _mock_client()
         client.get_checks.return_value = {
             "checks": [
-                {"name": "dns_enumeration", "suite": "network", "description": "DNS enum"},
-                {"name": "service_probe", "suite": "network", "description": "Service probe"},
+                {"name": "network_dns_enumeration", "suite": "network", "description": "DNS enum"},
+                {
+                    "name": "network_service_probe",
+                    "suite": "network",
+                    "description": "Service probe",
+                },
                 {"name": "header_analysis", "suite": "web", "description": "Header check"},
             ],
             "simulated": False,
@@ -233,8 +241,8 @@ class TestListChecksCommand:
         with _patch_client(client):
             result = runner.invoke(cli, ["list-checks", "--suite", "network"])
             assert result.exit_code == 0
-            assert "dns_enumeration" in result.output
-            assert "service_probe" in result.output
+            assert "network_dns_enumeration" in result.output
+            assert "network_service_probe" in result.output
             assert "header_analysis" not in result.output
 
     def test_list_checks_json(self, runner):
@@ -242,7 +250,7 @@ class TestListChecksCommand:
         client = _mock_client()
         client.get_checks.return_value = {
             "checks": [
-                {"name": "dns_enumeration", "suite": "network", "description": "DNS enum"},
+                {"name": "network_dns_enumeration", "suite": "network", "description": "DNS enum"},
             ],
             "simulated": False,
         }
@@ -261,7 +269,7 @@ class TestListChecksCommand:
         client.get_checks.return_value = {
             "checks": [
                 {
-                    "name": "dns_enumeration",
+                    "name": "network_dns_enumeration",
                     "suite": "network",
                     "description": "DNS enumeration",
                     "conditions": ["base_domain"],
@@ -281,7 +289,7 @@ class TestListChecksCommand:
         client = _mock_client()
         client.get_checks.return_value = {
             "checks": [
-                {"name": "dns_enumeration", "suite": "network", "description": "DNS enum"},
+                {"name": "network_dns_enumeration", "suite": "network", "description": "DNS enum"},
             ],
             "simulated": False,
         }
@@ -423,7 +431,7 @@ class TestScanCommand:
                     "scan",
                     "example.com",
                     "-c",
-                    "dns_enumeration",
+                    "network_dns_enumeration",
                     "-c",
                     "header_analysis",
                     "--quiet",
@@ -432,7 +440,7 @@ class TestScanCommand:
             assert result.exit_code == 0
 
         call_kwargs = client.start_scan.call_args[1]
-        assert sorted(call_kwargs.get("checks")) == ["dns_enumeration", "header_analysis"]
+        assert sorted(call_kwargs.get("checks")) == ["header_analysis", "network_dns_enumeration"]
         assert call_kwargs.get("suites") is None
 
     def test_scan_with_scenario(self, runner):
@@ -461,7 +469,7 @@ class TestScanCommand:
         client.get_scan_checks.return_value = {
             "checks": [
                 {
-                    "name": "dns_enumeration",
+                    "name": "network_dns_enumeration",
                     "suite": "network",
                     "conditions": [],
                     "produces": ["subdomains"],
@@ -480,7 +488,7 @@ class TestScanCommand:
         client = _mock_client()
         client.get_scan_checks.return_value = {
             "checks": [
-                {"name": "dns_enumeration", "suite": "network"},
+                {"name": "network_dns_enumeration", "suite": "network"},
             ],
         }
 

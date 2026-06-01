@@ -96,14 +96,14 @@ class TestCheckCoverage:
                 "dns_",
                 "tls_",
                 "port_",
-                "service_probe",
+                "network_service_probe",
                 "banner_",
                 "whois_",
-                "geoip",
-                "reverse_dns",
+                "network_geoip",
+                "network_reverse_dns",
                 "ipv6_",
                 "http_method",
-                "traceroute",
+                "network_traceroute",
             ],
             "web": [
                 "header_",
@@ -183,7 +183,7 @@ class TestCheckCoverage:
 
         findings = scenario.get("expected_findings", [])
         suite_indicators = {
-            "network": ["dns_", "service_probe", "tls_", "http_method"],
+            "network": ["dns_", "network_service_probe", "tls_", "http_method"],
             "web": [
                 "header_",
                 "robots_",

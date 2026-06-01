@@ -349,6 +349,8 @@ def discover_components(
 
 **Each sub-phase lands as a separate PR — operator-driven** (all git is manual; see header). Suites in 56.2–56.8 are independent; one stuck PR doesn't block the others. Component-type phases (56.10–56.12) can run in parallel with the phase-17 waves (56.13–56.17) — different files.
 
+> **Execution note (2026-06-01).** The structural suite migrations were executed slightly differently from the table above: the three AI-attack suites (**agent / rag / cag**, 17 checks each) were migrated together in a single pass labelled **56.6**, so the table's separate 56.7 (RAG) and 56.8 (CAG) rows were folded into it. All seven suites are now in folder shape. The freed **56.7** label is reused for a follow-on **convention sweep — uniform suite-prefixed names** — specified in §14. (The original §8.7 decision to *keep* the existing prefix hybrid is **superseded** by §14; see the note there.)
+
 ### 7.1 Execution tier by sub-phase
 
 Maps the §8.2–8.4 work-split (deterministic / local agent / interactive assistant) onto the rollout. The local tier owns the repetitive middle; the interactive tier owns the ends.
@@ -525,6 +527,8 @@ Filenames are abbreviated (or, in the prefixed suites, *un*prefixed); the `name`
 
 **Category-A cleanup renames (the only `name` changes this phase makes).** Trailing generic role-suffixes (`_check`, `_scan`) carry no information the `type`/`suite` doesn't already convey and are dropped. Substance suffixes (`_discovery`, `_detection`, `_injection`, `_analysis`, `_enumeration`, `_fingerprint`, …) describe what the check *does* and are **kept**. Suite prefixes (`mcp_`/`agent_`/`rag_`/`cag_`, ~69 checks) are **deliberately kept** — they are load-bearing for §6's global-name-uniqueness invariant: dropping them collides `discovery` 4 ways (mcp/agent/rag/cag) and `cache_poisoning`/`auth_bypass` 2 ways each. Stripping suite prefixes is deferred to a separate redesign that first moves runtime selection to a `(suite, name)`-scoped key.
 
+> **⚠ Superseded by §14 (sub-phase 56.7, 2026-06-01).** This paragraph reflects the *structural-migration* decision: keep the existing hybrid (some suites bare, some prefixed). It went two ways in execution — 56.5 actually *stripped* `mcp_`, leaving four bare suites (web/network/AI/MCP) and three prefixed (agent/rag/cag). The operator subsequently chose the opposite of "deferred": rather than *removing* prefixes (impossible without a `(suite, name)` key, exactly as warned), make them **uniform** — every check `<suite>_<name>`. That satisfies global-name-uniqueness *by construction* and turns `infer_suite()` into a pure prefix split. The Category-A *suffix*-drop renames in the map below stand; §14 *adds/restores* the suite prefix on top of them (`cors` → `web_cors`, and the 56.5 `mcp_` strip is reverted).
+
 The full Category-A map (the `--rename-map` input for `diff-registry`, §8.1):
 
 ```yaml
@@ -593,7 +597,8 @@ port_scan: ports
 
 - `pytest tests/` passes with zero regressions across 56.1–56.12.
 - `check_resolver.py` drops below 100 lines (from 570 today).
-- `infer_suite()` deleted.
+- `infer_suite()` reduced to a **pure prefix split** (`name.split('_', 1)[0]` validated against the suite set) after 56.7 makes every check name `<suite>_<name>`; the 56.5 `_MCP_CHECK_NAMES` exact-name special-case is deleted. (The original "delete `infer_suite()`" goal is relaxed: a one-line prefix derivation is simpler than maintaining a name→suite table, and registry/diff tooling still needs the lookup.)
+- **Uniform naming:** every check name is `<suite>_<name>` (56.7); global-name-uniqueness holds by construction, not by collision-checking a flat namespace.
 - Every in-tree component lives in a folder matching §3.
 - Every component folder contains the role-based filenames from §3.3 (`check.py`/`agent.py`/`advisor.py`/`gate.py` + `contract.yaml` + `config.yaml`) and its `contract.name` matches the folder name.
 - Adding a new check: run `chainsmith dev new-check --name foo --suite web` → edit the generated `foo.py` → done. No `check_resolver.py` edit.
@@ -638,6 +643,64 @@ Legend: `[x]` done · `[~]` proposed, pending confirmation · `[ ]` open.
 - [x] **Resolver baseline corrected (C6)** — `check_resolver.py` is **570 lines** today (`infer_suite` at 489), not ~300. §11 success criterion now "below 100 from 570." §1, §11.
 - [x] **Pytest config consolidation (C12)** — two configs exist (`pytest.ini` + `pyproject.toml [tool.pytest.ini_options]`); pytest reads only `pytest.ini`, so the pyproject block — and its `--strict-markers`/`-ra`/`minversion`/`python_files`/`python_functions` — is currently dead, and the §10 risk-2 `testpaths`/`--import-mode` fix would no-op if applied there. **Resolved:** delete `pytest.ini`, fold the union into `pyproject.toml` (operator pick: single source = pyproject); keep `-v` (CI-aligned, confirms co-located tests run), drop the contradictory `-q`; turn on `--strict-markers` as the first 56.1 commit and run the unchanged suite once to clear any pre-existing marker violations before checks move. §10 risk 2.
 - [x] **Component naming + cleanup (C2)** — folder name derives from the `name` *class attribute*, not the filename; multi-class files split one-folder-per-class (`endpoints.py` → llm + embedding, walk *all* subclasses); Category-A trailing-suffix cleanup only (`*_check`/`port_scan` → 9 renames via `--rename-map`), substance suffixes kept, suite prefixes kept (load-bearing for global-name-uniqueness — dropping collides `discovery`/`cache_poisoning`/`auth_bypass`); sims out of regression scope (dormant + drifted); `expected_findings` is the sole anchor and is propagated through the rename map. §8.7, §8.1, §8.2.
+- [x] **Uniform suite-prefixed names (56.7, operator 2026-06-01)** — **reverses** the C2 "keep the hybrid" stance once execution had left four bare suites (web/network/AI) plus a stripped MCP and three prefixed (agent/rag/cag). Adopt `<suite>_<name>` for *every* check: add `web_`/`network_`/`ai_`, **restore** the 56.5-stripped `mcp_`. Rationale: collision-proof by construction, makes `infer_suite()` a pure prefix split, self-documenting in observations/logs. Gated suite-by-suite (own PRs); `infer_suite` simplified + `_MCP_CHECK_NAMES` deleted only at the very end (mid-sweep it must stay prefix-aware-with-fallback so unmigrated bare names still route). Full spec in §14.
+
+---
+
+## 14. Sub-phase 56.7 — Uniform suite-prefixed names (convention sweep)
+
+**Status:** in progress (network piloted first). **Supersedes** the §8.7 "keep the hybrid / defer prefix changes" note. **Not a new migration** — all seven suites are already in folder shape (§13 execution note); this only *renames* already-migrated checks.
+
+### 14.1 Goal & rationale
+
+Every check name becomes `<suite>_<name>`. This is the long-term-viable convention because it is:
+- **Collision-proof by construction.** §6's global-name-uniqueness invariant (one flat `by_name` map across the whole tree, `component_loader.py` Pass 2) is satisfied automatically — two suites can never both own a check whose name resolves to `discovery`. (The path does *not* save you: identity is the `name`, and §6's folder-name-mismatch rule forces the leaf folder to equal it. Suite-in-the-path ≠ clean registration; suite-in-the-name is what's required.)
+- **`infer_suite()`-trivial.** Suite derivation collapses to `name.split('_', 1)[0]` validated against the suite set, killing the 56.5 `_MCP_CHECK_NAMES` exact-name special-case.
+- **Self-documenting** in observations, logs, the API, and `expected_findings` keys.
+
+### 14.2 Scope (4 suites; agent/rag/cag already correct)
+
+Today's state is a hybrid: agent/rag/cag carry their prefix (56.6); web/network/AI are bare; MCP was *stripped* in 56.5. 56.7 makes it uniform:
+
+| Suite | Count | Action | Example |
+|---|---|---|---|
+| web | 22 | add `web_` | `cors` → `web_cors`, `robots_txt` → `web_robots_txt` |
+| network | 13 | add `network_` | `port_scan` → `network_port_scan` |
+| AI | 28 | add `ai_` (2 existing `ai_*` already fine) | `jailbreak_testing` → `ai_jailbreak_testing` |
+| MCP | 18 | **restore** `mcp_` (revert the 56.5 strip) | `auth_check` → `mcp_auth_check` |
+| agent / rag / cag | 17×3 | none — already `<suite>_<name>` | — |
+
+⚠ This **reverses committed work** (the 56.5 MCP strip and re-opens those shipped names). Confirmed by the operator 2026-06-01. Runs as its own reviewable phase, **gated suite-by-suite** — git is operator-only.
+
+### 14.3 Tooling — `chainsmith dev rename-suite` / `rename-check`
+
+The `migrate-*` tools are flat-file → folder and **do not apply** here. 56.7 adds `app/dev/rename.py` (+ thin CLI wrappers, `hidden=True` like the rest of `dev`). Per check, `rename-check <suite> <old> <new>` does:
+
+**Auto (safe, mechanical):**
+1. Rename the folder `app/checks/<suite>/<old>/` → `.../<new>/`.
+2. Rewrite `contract.yaml` `name:` and the `check.py` `name = "<old>"` class attribute.
+3. **Module-path codemod** — replace the dotted package `app.checks.<suite>.<old>` → `…<new>` across `app/` + `tests/` (word-boundary safe; this fixes the suite `__init__.py` re-export, the moved folder's own `__init__.py`, and every `from …import`/patch path). *Distinct from `migrate`'s codemod*: a folder→folder rename is a plain prefix swap with **no `.check` insertion** (refs already point at `.check`).
+
+**Surgical (allowlisted, exact-quoted) name-string sweep:**
+4. Replace exact-quoted (`"<old>"`, `'<old>'`) and finding-key (`"<old>-…"`) occurrences of the *name* — only in an explicit allowlist: `app/engine/chains.py` (`check_name`), `app/advisors/scan_analysis_advisor.py` (`trigger_check`/`suggest`), `scenarios/*/scenario.json` (`expected_findings` keys), `tests/**` (`.name ==` assertions; module patches handled by step 3), `static/scan.html` (phase-grouping arrays). **Never** touched: simulation YAMLs (`scenarios/**/simulations/**`, `app/checks/simulator/simulations/**` — out of regression scope, don't-touch), data keys (`mcp_servers`, `*_results`), and look-alike module names (`app/tools/port_scan.py`).
+
+`rename-suite <suite> --prefix <suite>_` runs `rename-check` for every check in the suite and appends the `old: new` pairs to `.phase56/rename-map.yaml`.
+
+### 14.4 `infer_suite()` during vs. after the sweep
+
+`registry_diff._check_identity` derives suite from `infer_suite(check.name)`, so it must stay correct at every intermediate state (some suites prefixed, some not). Strategy:
+- **During the sweep:** make `infer_suite` **prefix-aware first** — if `name.split('_',1)[0]` is a known suite, return it — then **fall through to the existing substring/`_MCP_CHECK_NAMES` logic** for not-yet-renamed bare names. Safe because the suite words only ever appear as deliberate prefixes (verified: no bare check's first `_`-token is a suite word). This makes both `web_cors` (prefixed) and `robots_txt` (bare, mid-suite) route correctly.
+- **After all 4 suites:** collapse to the pure prefix split and **delete** `_MCP_CHECK_NAMES` + the substring `suite_patterns` table.
+
+### 14.5 rename-map direction
+
+Append `old: new` (e.g. `cors: web_cors`, `port_scan: network_port_scan`) per suite as it lands, so `diff-registry --rename-map` applies them to the pre-56.7 registry baseline → stays CLEAN. For MCP, the current `.phase56/rename-map.yaml` already has 56.5 strip entries (`mcp_auth_check: auth_check`); restoring the prefix means those net out — the registry baseline still carries the original `mcp_*`, so the cleanest path is to **drop** the 18 MCP strip lines (re-deriving identity from the baseline) rather than chaining a reverse rename.
+
+### 14.6 Per-suite gates
+
+Same as the structural migrations: `dev verify-contracts` OK · `dev diff-registry --compare .phase56/registry-baseline.json --rename-map …` **CLEAN** · full `pytest` green (collect parity) · `ruff check` + `ruff format --check` clean. Then the live fakobanko smoke after a container restart (§ smoke command; the renamed checks emit prefixed observation names, so update the `--ignore-check` set accordingly).
+
+**Order:** network (piloted) → web → AI → **MCP last** (it also removes `_MCP_CHECK_NAMES` and the resolver special-case), then the final `infer_suite` simplification.
 
 ---
 

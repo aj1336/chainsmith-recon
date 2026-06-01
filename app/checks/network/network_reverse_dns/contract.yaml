@@ -1,0 +1,31 @@
+id: bb935c5b-412e-4460-8fcb-1769b1fd0723
+name: network_reverse_dns
+type: check
+description: Reverse DNS (PTR) lookup for discovered IP addresses
+entry: check.py:ReverseDnsCheck
+suite: network
+depends_on:
+- output_name: dns_records
+  operator: truthy
+produces:
+- reverse_dns
+- reverse_dns_hosts
+intrusive: false
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- reverse DNS lookup
+- PTR record enumeration
+- virtual hosting detection
+references:
+- OWASP WSTG-INFO-03 — Review Webserver Metafiles for Information Leakage
+- PTES - Intelligence Gathering
+- https://attack.mitre.org/techniques/T1596/001/
+reason: PTR records reveal internal hostnames, virtual hosting relationships, and
+  cloud infrastructure patterns. Internal naming conventions (*.internal, ip-*) expose
+  infrastructure details useful for reconnaissance.

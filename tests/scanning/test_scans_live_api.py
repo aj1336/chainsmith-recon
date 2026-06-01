@@ -92,7 +92,7 @@ async def test_live_scans_exposes_progress_fields(clean_registry):
     s = _session("scan-1")
     s.checks_total = 10
     s.checks_completed = 4
-    s.current_check = "dns_enumeration"
+    s.current_check = "network_dns_enumeration"
     s.phase = "scanning"
     clean_registry.register(s)
 
@@ -100,6 +100,6 @@ async def test_live_scans_exposes_progress_fields(clean_registry):
     row = result["scans"][0]
     assert row["checks_total"] == 10
     assert row["checks_completed"] == 4
-    assert row["current_check"] == "dns_enumeration"
+    assert row["current_check"] == "network_dns_enumeration"
     assert row["phase"] == "scanning"
     assert row["target"] == "example.com"

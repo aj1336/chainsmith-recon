@@ -77,7 +77,7 @@ def sample_observations():
         {
             "title": "SSH Service Detected",
             "severity": "info",
-            "check_name": "port_scan",
+            "check_name": "network_port_scan",
             "suite": "network",
             "host": "example.com",
         },
@@ -109,8 +109,8 @@ def sample_chains():
 def sample_check_log():
     """Realistic check log entries."""
     return [
-        {"check": "port_scan", "event": "started", "suite": "network"},
-        {"check": "port_scan", "event": "completed", "observations": 1, "suite": "network"},
+        {"check": "network_port_scan", "event": "started", "suite": "network"},
+        {"check": "network_port_scan", "event": "completed", "observations": 1, "suite": "network"},
         {"check": "xss_reflected", "event": "started", "suite": "web"},
         {"check": "xss_reflected", "event": "completed", "observations": 1, "suite": "web"},
         {"check": "header_analysis", "event": "started", "suite": "web"},
@@ -476,7 +476,7 @@ class TestCheckLogRepository:
             "scan-001",
             [
                 {
-                    "check": "port_scan",
+                    "check": "network_port_scan",
                     "event": "completed",
                     "observations": 3,
                     "suite": "network",
@@ -488,7 +488,7 @@ class TestCheckLogRepository:
         async with db.session() as session:
             result = await session.execute(select(CheckLog).where(CheckLog.scan_id == "scan-001"))
             entry = result.scalar_one()
-            assert entry.check_name == "port_scan"
+            assert entry.check_name == "network_port_scan"
             assert entry.event == "completed"
             assert entry.observations_count == 3
             assert entry.suite == "network"
