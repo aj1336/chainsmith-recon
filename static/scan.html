@@ -343,7 +343,7 @@
         // Phase categorization for checks (maps check names to UI phases)
         const phaseMapping = {
             'discovery': ['dns_enumeration', 'service_probe'],
-            'probing': ['header_analysis', 'robots_txt', 'path_probe', 'openapi_discovery', 'cors_check', 'port_scan'],
+            'probing': ['header_analysis', 'robots_txt', 'path_probe', 'openapi_discovery', 'cors', 'port_scan'],
             'analysis': ['ai_framework_fingerprint', 'ai_error_leakage', 'model_info'],
             'ai': ['llm_endpoint', 'embedding_endpoint', 'tool_discovery', 'prompt_leakage', 'rate_limit', 'content_filter', 'context_window', 'mcp', 'agent', 'rag', 'cag']
         };

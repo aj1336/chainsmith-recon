@@ -1,0 +1,31 @@
+id: 974e0cab-d4c7-4eef-858a-12ec8bee407a
+name: redirect_chain
+type: check
+description: Follow redirect chains and check for HTTP->HTTPS, open redirects, excessive
+  hops
+entry: check.py:RedirectChainCheck
+suite: web
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- redirect_info
+intrusive: true
+service_types:
+- http
+- html
+- api
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- redirect chain analysis
+- open redirect testing
+references:
+- OWASP WSTG-CLNT-04
+- CWE-601
+reason: Missing HTTPS redirects expose traffic to interception; open redirects enable
+  phishing

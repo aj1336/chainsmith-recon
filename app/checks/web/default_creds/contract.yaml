@@ -1,0 +1,31 @@
+id: a55ff028-1e0a-47ce-93b6-18d6b17d8ce8
+name: default_creds
+type: check
+description: Test admin panels for default credentials and unauthenticated access
+entry: check.py:DefaultCredsCheck
+suite: web
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- default_creds_observations
+intrusive: true
+service_types:
+- http
+- html
+- api
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- default credential testing
+- authentication bypass
+references:
+- OWASP WSTG-ATHN-02
+- CWE-798
+- CWE-1392
+reason: Admin panels with default credentials supersede all AI-specific observations
+  on the same host

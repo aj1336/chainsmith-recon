@@ -1,0 +1,33 @@
+id: 5ea80cc6-2d9b-4b53-b582-90aa6fb7fe89
+name: header_analysis
+type: check
+description: Analyze HTTP headers for technology disclosure and security misconfigurations
+entry: check.py:HeaderAnalysisCheck
+suite: web
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- header_observations
+intrusive: false
+service_types:
+- http
+- html
+- api
+- ai
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- banner grabbing
+- fingerprinting
+- security header analysis
+references:
+- OWASP WSTG-INFO-02
+- CWE-200
+- CIS Benchmarks
+- OWASP Secure Headers Project
+reason: HTTP headers often reveal server software, frameworks, and security misconfigurations

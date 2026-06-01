@@ -183,30 +183,6 @@ def get_real_checks() -> list:
         RAGSourceAttributionCheck,
         RAGVectorStoreAccessCheck,
     )
-    from app.checks.web import (
-        AuthDetectionCheck,
-        ConfigExposureCheck,
-        CookieSecurityCheck,
-        CorsCheck,
-        DebugEndpointCheck,
-        DefaultCredsCheck,
-        DirectoryListingCheck,
-        ErrorPageCheck,
-        FaviconCheck,
-        HeaderAnalysisCheck,
-        HSTSPreloadCheck,
-        HTTP2DetectionCheck,
-        MassAssignmentCheck,
-        OpenAPICheck,
-        PathProbeCheck,
-        RedirectChainCheck,
-        SitemapCheck,
-        SRICheck,
-        SSRFIndicatorCheck,
-        VCSExposureCheck,
-        WAFDetectionCheck,
-        WebDAVCheck,
-    )
 
     # Instantiate all checks in dependency order
     checks = [
@@ -228,31 +204,9 @@ def get_real_checks() -> list:
         HttpMethodEnumCheck(),
         TracerouteCheck(),
         # Web Phase 1 (depends on services)
-        HeaderAnalysisCheck(),
-        CookieSecurityCheck(),
-        CorsCheck(),
-        WAFDetectionCheck(),
-        AuthDetectionCheck(),
-        FaviconCheck(),
-        HTTP2DetectionCheck(),
         # Web Phase 2 (depends on Phase 1)
-        PathProbeCheck(),
-        SitemapCheck(),
-        ErrorPageCheck(),
-        OpenAPICheck(),
         # Web critical observations (Phase 6a — depends on services, some use path_probe output)
-        WebDAVCheck(),
-        VCSExposureCheck(),
-        ConfigExposureCheck(),
-        DirectoryListingCheck(),
-        DefaultCredsCheck(),
-        DebugEndpointCheck(),
         # Web Phase 4 (depends on Phase 2-3)
-        RedirectChainCheck(),
-        SSRFIndicatorCheck(),
-        MassAssignmentCheck(),
-        HSTSPreloadCheck(),
-        SRICheck(),
         # AI discovery (depends on services)
         LLMEndpointCheck(),
         EmbeddingEndpointCheck(),
@@ -543,7 +497,7 @@ def infer_suite(check_name: str) -> str:
             "favicon",
             "http2_detection",
             "hsts_preload",
-            "sri_check",
+            "sri",
             "mass_assignment",
         ],
         "ai": [

@@ -69,15 +69,43 @@ def save_baseline(path: Path, snapshot: dict[str, Any]) -> None:
     path.write_text(json.dumps(snapshot, indent=2, sort_keys=True), encoding="utf-8")
 
 
-def compare(baseline_path: Path, current: dict[str, Any]) -> dict[str, Any]:
+def _rename_snapshot(snapshot: dict[str, Any], rename: dict[str, str]) -> dict[str, Any]:
+    """Apply old→new check-name renames to a snapshot's identities + by_check.
+
+    The check_name is index 0 of each identity tuple; observation titles/hosts/
+    severity are unaffected by a rename (§8.7 renames the name attribute only).
+    """
+    if not rename:
+        return snapshot
+    identities = []
+    for ident in snapshot.get("identities", []):
+        ident = list(ident)
+        ident[0] = rename.get(ident[0], ident[0])
+        identities.append(ident)
+    by_check = {rename.get(k, k): v for k, v in snapshot.get("by_check", {}).items()}
+    return {**snapshot, "identities": identities, "by_check": by_check}
+
+
+def compare(
+    baseline_path: Path,
+    current: dict[str, Any],
+    rename_map: dict[str, str] | None = None,
+    ignore_checks: set[str] | None = None,
+) -> dict[str, Any]:
     """Diff a current snapshot against a saved baseline.
+
+    `rename_map` (old→new) is applied to the baseline so a deliberate Category-A
+    rename reads as identical (§8.7). `ignore_checks` drops observations from named
+    checks on both sides — used to tolerate the fakobanko random_pool noise floor.
 
     Returns {clean, total_baseline, total_current, added, removed, by_check_delta}.
     `added`/`removed` are observation-identity tuples (as lists).
     """
     baseline = json.loads(Path(baseline_path).read_text(encoding="utf-8"))
-    b_ids = {tuple(x) for x in baseline.get("identities", [])}
-    c_ids = {tuple(x) for x in current.get("identities", [])}
+    baseline = _rename_snapshot(baseline, rename_map or {})
+    ignore_checks = ignore_checks or set()
+    b_ids = {tuple(x) for x in baseline.get("identities", []) if x[0] not in ignore_checks}
+    c_ids = {tuple(x) for x in current.get("identities", []) if x[0] not in ignore_checks}
 
     added = sorted(list(x) for x in (c_ids - b_ids))
     removed = sorted(list(x) for x in (b_ids - c_ids))

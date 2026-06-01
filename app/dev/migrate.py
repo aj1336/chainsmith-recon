@@ -172,6 +172,26 @@ def strip_config_tunables(source_text: str) -> str:
     return pattern.sub("", source_text)
 
 
+def sanitize_self_imports(check_py: str, new_pkg_dotted: str) -> tuple[str, list[str]]:
+    """Remove any self-referential import from the generated check.py.
+
+    A freshly-migrated `check.py` lives at `<new_pkg_dotted>.check`; an import line
+    `from <new_pkg_dotted>...` (e.g. `from app.checks.web.cors.check import ...`)
+    is always wrong — it makes the module import from itself. This defends against
+    a class of codemod edge cases observed in 56.2 (cors/openapi) regardless of the
+    exact trigger. Returns (clean_text, removed_lines).
+    """
+    removed: list[str] = []
+    out_lines: list[str] = []
+    for line in check_py.splitlines(keepends=True):
+        stripped = line.lstrip()
+        if stripped.startswith(f"from {new_pkg_dotted}"):
+            removed.append(line.rstrip("\n"))
+            continue
+        out_lines.append(line)
+    return "".join(out_lines), removed
+
+
 def _yaml_dump(data: dict[str, Any]) -> str:
     return yaml.safe_dump(data, sort_keys=False, default_flow_style=False, allow_unicode=True)
 
@@ -188,6 +208,25 @@ def remove_from_resolver(class_names: list[str], resolver_path: Path) -> list[st
             removed.append(cn)
     resolver_path.write_text(text, encoding="utf-8")
     return removed
+
+
+def cleanup_empty_suite_import(suite: str, resolver_path: Path, checks_root: Path) -> bool:
+    """Remove a now-empty `from <pkg>.<suite> import (...)` block from the resolver.
+
+    When an entire suite is migrated, all its names are removed from the import
+    tuple, leaving `from ...web import (\\n)` — a SyntaxError. Collapse it.
+    """
+    pkg = ".".join(Path(checks_root).parts)
+    text = resolver_path.read_text(encoding="utf-8")
+    # `from app.checks.web import (` followed by only whitespace/commas then `)`
+    pat = re.compile(
+        rf"^[ \t]*from {re.escape(pkg)}\.{re.escape(suite)} import \([\s,]*\)\n",
+        re.MULTILINE,
+    )
+    new_text, n = pat.subn("", text)
+    if n:
+        resolver_path.write_text(new_text, encoding="utf-8")
+    return bool(n)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -240,6 +279,21 @@ def migrate_check(
 
     init_tmpl = (_TEMPLATE_DIR / "__init__.py.tmpl").read_text(encoding="utf-8")
     check_py = strip_config_tunables(source_text)
+    # Category-A rename (§8.7): the `name` attribute propagates to the folder AND
+    # the class attribute, so the class and contract agree (avoids a split identity
+    # where cls().name != loader-built .name). Only rewrites on an actual rename.
+    if folder_name != raw_name:
+        check_py = re.sub(
+            rf'(^\s*name\s*=\s*)["\']{re.escape(raw_name)}["\']',
+            rf'\g<1>"{folder_name}"',
+            check_py,
+            count=1,
+            flags=re.MULTILINE,
+        )
+    # Defensive: never emit a self-referential import (§56.2 cors/openapi guard).
+    check_py, removed_self = sanitize_self_imports(check_py, new_pkg_dotted)
+    if removed_self:
+        result.todos.append(f"removed self-import(s): {removed_self}")
 
     if not dry_run:
         folder.mkdir(parents=True, exist_ok=False)
@@ -261,12 +315,19 @@ def migrate_check(
         f"{new_pkg_dotted}.check.<symbol>)"
     )
 
-    # Codemod broken import paths (skip for same-name where the package replaces the module).
-    if old_dotted != new_pkg_dotted:
-        cm = codemod.rewrite_imports(
-            old_dotted, new_pkg_dotted, "check", search_roots, dry_run=dry_run
-        )
-        result.codemod_files = [r.file for r in cm]
+    # Codemod broken references. Run even for same-name checks: the import rewrite
+    # is a no-op there, but attribute/patch refs (e.g. patch("...mod.AsyncHttpClient"))
+    # still need the `.check` submodule insertion since the package __init__ re-exports
+    # only the entry class. Exclude the new folder so its own files aren't rewritten.
+    cm = codemod.rewrite_imports(
+        old_dotted,
+        new_pkg_dotted,
+        "check",
+        search_roots,
+        dry_run=dry_run,
+        exclude_dirs=[folder],
+    )
+    result.codemod_files = [r.file for r in cm]
 
     # Remove from the hand-maintained resolver list.
     if not dry_run:
@@ -293,4 +354,7 @@ def migrate_suite(
             r = MigrateResult(source=py, dry_run=dry_run)
             r.todos.append(f"SKIPPED: {e}")
             results.append(r)
+    # If the whole suite migrated, its resolver import block is now empty — collapse it.
+    if not dry_run:
+        cleanup_empty_suite_import(suite, Path("app/check_resolver.py"), checks_root)
     return results

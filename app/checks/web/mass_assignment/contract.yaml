@@ -1,0 +1,30 @@
+id: 5161c58d-a21f-4c1e-9c3d-a9f518b51e54
+name: mass_assignment
+type: check
+description: Test REST APIs for mass assignment by sending extra fields in requests
+entry: check.py:MassAssignmentCheck
+suite: web
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- mass_assignment_info
+intrusive: true
+service_types:
+- http
+- api
+- ai
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- mass assignment testing
+- API parameter tampering
+references:
+- OWASP API8:2023
+- CWE-915
+reason: REST APIs that bind request bodies without field whitelisting allow privilege
+  escalation and data manipulation

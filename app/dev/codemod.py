@@ -74,23 +74,36 @@ def rewrite_imports(
     search_roots: list[Path],
     *,
     dry_run: bool = False,
+    exclude_dirs: list[Path] | None = None,
 ) -> list[CodemodResult]:
     """Rewrite every reference to `old_dotted` under the given roots.
 
+    Run even when `old_dotted == new_pkg_dotted` (a same-name check): the import
+    rewrite is then a no-op, but attribute/patch references still need the
+    `.{entry_stem}` insertion because the package `__init__` re-exports only the
+    entry class, not module-level symbols (e.g. AsyncHttpClient).
+
     Args:
-        old_dotted: e.g. "app.checks.web.robots"
-        new_pkg_dotted: the new folder package, e.g. "app.checks.web.robots_txt"
+        old_dotted: e.g. "app.checks.web.cors"
+        new_pkg_dotted: the new folder package, e.g. "app.checks.web.cors"
         entry_stem: the entry module stem inside the folder, e.g. "check"
         search_roots: directories to scan for *.py files.
         dry_run: if True, do not write; only report what would change.
+        exclude_dirs: directories to skip (e.g. the newly-created component folder,
+            whose own `__init__.py`/`check.py` already use the correct paths and
+            must not be double-rewritten).
     """
     results: list[CodemodResult] = []
     seen: set[Path] = set()
+    excludes = [Path(d).resolve() for d in (exclude_dirs or [])]
     for root in search_roots:
         for py in sorted(Path(root).rglob("*.py")):
             if py in seen:
                 continue
             seen.add(py)
+            resolved = py.resolve()
+            if any(ex in resolved.parents for ex in excludes):
+                continue
             original = py.read_text(encoding="utf-8")
             if old_dotted not in original:
                 continue

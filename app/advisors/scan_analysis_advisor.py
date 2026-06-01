@@ -107,7 +107,7 @@ FOLLOW_UP_RULES: list[dict] = [
     {
         "trigger_check": "header_analysis",
         "trigger_condition": "observations",
-        "suggest": "cors_check",
+        "suggest": "cors",
         "reason": "Header issues found — CORS misconfig often accompanies missing security headers.",
         "confidence": "medium",
     },

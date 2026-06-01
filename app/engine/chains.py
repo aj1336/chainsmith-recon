@@ -702,7 +702,7 @@ CHAIN_PATTERNS = [
         "description": "Permissive CORS on AI endpoints allows any website to make cross-origin requests to the LLM",
         "severity": "high",
         "required_observations": [
-            {"check_name": "cors_check"},
+            {"check_name": "cors"},
             {"check_name": "llm_endpoint_discovery"},
         ],
         "exploitation_steps": [

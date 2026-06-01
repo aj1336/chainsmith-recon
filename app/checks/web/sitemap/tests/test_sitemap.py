@@ -1,0 +1,279 @@
+"""Co-located tests (Phase 56 §3) — split from test_web_sitemap.py."""
+
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from app.checks.base import Service
+from app.checks.web.sitemap import SitemapCheck
+from app.lib.http import HttpResponse
+
+
+@pytest.fixture
+def service():
+    return Service(
+        url="http://target.com:80", host="target.com", port=80, scheme="http", service_type="http"
+    )
+@pytest.fixture
+def https_service():
+    return Service(
+        url="https://target.com:443",
+        host="target.com",
+        port=443,
+        scheme="https",
+        service_type="http",
+    )
+def resp(status_code=200, body="", headers=None, error=None, url="http://target.com:80"):
+    return HttpResponse(
+        url=url,
+        status_code=status_code,
+        headers=headers or {},
+        body=body,
+        elapsed_ms=50.0,
+        error=error,
+    )
+def mock_client_multi(response_map=None, default=None):
+    """Mock client that returns different responses based on URL/method."""
+    if default is None:
+        default = resp(404)
+
+    mock = AsyncMock()
+    mock.__aenter__ = AsyncMock(return_value=mock)
+    mock.__aexit__ = AsyncMock()
+
+    def _lookup(method, url):
+        if response_map:
+            for (m, pattern), response in response_map.items():
+                if m == method and pattern in url:
+                    return response
+        return default
+
+    async def dispatch_get(url, **kwargs):
+        return _lookup("GET", url)
+
+    async def dispatch_post(url, **kwargs):
+        return _lookup("POST", url)
+
+    mock.get = AsyncMock(side_effect=dispatch_get)
+    mock.post = AsyncMock(side_effect=dispatch_post)
+    mock.head = AsyncMock(side_effect=lambda url, **kw: _lookup("HEAD", url))
+    mock._request = AsyncMock(side_effect=lambda m, url, **kw: _lookup(m, url))
+
+    return mock
+SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://target.com/page1</loc></url>
+  <url><loc>https://target.com/page2</loc></url>
+  <url><loc>https://target.com/admin/dashboard</loc></url>
+  <url><loc>https://target.com/api/v1/users</loc></url>
+  <url><loc>https://target.com/api/v2/users</loc></url>
+  <url><loc>https://target.com/internal/tools</loc></url>
+</urlset>"""
+SITEMAP_INDEX_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap><loc>https://target.com/sitemap-main.xml</loc></sitemap>
+  <sitemap><loc>https://target.com/sitemap-api.xml</loc></sitemap>
+</sitemapindex>"""
+SUB_SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://target.com/about</loc></url>
+  <url><loc>https://target.com/staging/test</loc></url>
+</urlset>"""
+
+
+class TestSitemapCheck:
+    def test_init(self):
+        check = SitemapCheck()
+        assert check.name == "sitemap"
+        assert "sitemap_paths" in check.produces
+
+    @pytest.mark.asyncio
+    async def test_sitemap_from_robots(self, service):
+        """Sitemap URL from robots.txt output is fetched and parsed."""
+        check = SitemapCheck()
+        context = {
+            "robots_80": {
+                "sitemaps": ["https://target.com/sitemap.xml"],
+                "disallowed": [],
+                "interesting": [],
+            }
+        }
+
+        with patch(
+            "app.checks.web.sitemap.check.AsyncHttpClient",
+            return_value=mock_client_multi(
+                response_map={("GET", "sitemap.xml"): resp(200, body=SITEMAP_XML)},
+            ),
+        ):
+            result = await check.check_service(service, context)
+
+        assert result.success
+        assert len(result.observations) >= 1
+        # Should find 6 paths
+        info_observations = [f for f in result.observations if "sitemap-discovered" in (f.id or "")]
+        assert len(info_observations) == 1
+        assert "6 URLs" in info_observations[0].title
+        assert info_observations[0].severity == "info"
+        # Evidence contains sample paths from the sitemap
+        assert "/page1" in info_observations[0].evidence
+        assert "/admin/dashboard" in info_observations[0].evidence
+
+    @pytest.mark.asyncio
+    async def test_sitemap_default_location(self, service):
+        """Falls back to /sitemap.xml when robots.txt has no sitemaps."""
+        check = SitemapCheck()
+        context = {}
+
+        with patch(
+            "app.checks.web.sitemap.check.AsyncHttpClient",
+            return_value=mock_client_multi(
+                response_map={("GET", "sitemap.xml"): resp(200, body=SITEMAP_XML)},
+            ),
+        ):
+            result = await check.check_service(service, context)
+
+        assert result.success
+        discovered = [f for f in result.observations if "sitemap-discovered" in (f.id or "")]
+        assert len(discovered) == 1
+        assert "6" in discovered[0].title
+        assert "/page1" in discovered[0].evidence
+
+    @pytest.mark.asyncio
+    async def test_sitemap_not_found(self, service):
+        """No observations when sitemap returns 404."""
+        check = SitemapCheck()
+        context = {}
+
+        with patch(
+            "app.checks.web.sitemap.check.AsyncHttpClient",
+            return_value=mock_client_multi(
+                default=resp(404),
+            ),
+        ):
+            result = await check.check_service(service, context)
+
+        assert result.success
+        assert len(result.observations) == 0
+
+    @pytest.mark.asyncio
+    async def test_sensitive_paths_detected(self, service):
+        """Sensitive paths (admin, internal) are flagged with count and evidence."""
+        check = SitemapCheck()
+        context = {}
+
+        with patch(
+            "app.checks.web.sitemap.check.AsyncHttpClient",
+            return_value=mock_client_multi(
+                response_map={("GET", "sitemap.xml"): resp(200, body=SITEMAP_XML)},
+            ),
+        ):
+            result = await check.check_service(service, context)
+
+        sensitive = [f for f in result.observations if "sensitive-paths" in (f.id or "")]
+        assert len(sensitive) == 1
+        # SITEMAP_XML has /admin/dashboard, /api/v1/users, /api/v2/users, /internal/tools
+        assert sensitive[0].severity == "medium"  # /internal/ triggers medium
+        assert "/admin/dashboard" in sensitive[0].evidence
+        assert "/internal/tools" in sensitive[0].evidence
+        # The title shows the count of sensitive paths
+        assert "4" in sensitive[0].title
+
+    @pytest.mark.asyncio
+    async def test_api_versioning_detected(self, service):
+        """Multiple API versions are flagged."""
+        check = SitemapCheck()
+        context = {}
+
+        with patch(
+            "app.checks.web.sitemap.check.AsyncHttpClient",
+            return_value=mock_client_multi(
+                response_map={("GET", "sitemap.xml"): resp(200, body=SITEMAP_XML)},
+            ),
+        ):
+            result = await check.check_service(service, context)
+
+        versioning = [f for f in result.observations if "api-versioning" in (f.id or "")]
+        assert len(versioning) == 1
+        assert "v1" in versioning[0].evidence
+        assert "v2" in versioning[0].evidence
+
+    @pytest.mark.asyncio
+    async def test_sitemap_index(self, service):
+        """Sitemap index files are followed to sub-sitemaps."""
+        check = SitemapCheck()
+        context = {}
+
+        with patch(
+            "app.checks.web.sitemap.check.AsyncHttpClient",
+            return_value=mock_client_multi(
+                response_map={
+                    ("GET", "/sitemap.xml"): resp(200, body=SITEMAP_INDEX_XML),
+                    ("GET", "sitemap-main.xml"): resp(200, body=SUB_SITEMAP_XML),
+                    ("GET", "sitemap-api.xml"): resp(200, body=SUB_SITEMAP_XML),
+                },
+            ),
+        ):
+            result = await check.check_service(service, context)
+
+        assert result.success
+        discovered = [f for f in result.observations if "sitemap-discovered" in (f.id or "")]
+        assert len(discovered) == 1
+        # SUB_SITEMAP_XML has 2 paths (/about, /staging/test); fetched for both
+        # sub-sitemaps = 4 total, then deduplicated to 2 unique paths
+        assert "2 unique paths" in discovered[0].title
+        # Evidence should contain the sample paths
+        assert "/about" in discovered[0].evidence
+        assert "/staging/test" in discovered[0].evidence
+        # Outputs should reflect the deduplicated paths
+        assert len(result.outputs["sitemap_paths"]["all_paths"]) == 2
+
+    @pytest.mark.asyncio
+    async def test_outputs_sitemap_paths(self, service):
+        """Check outputs sitemap_paths for downstream checks."""
+        check = SitemapCheck()
+        context = {}
+
+        with patch(
+            "app.checks.web.sitemap.check.AsyncHttpClient",
+            return_value=mock_client_multi(
+                response_map={("GET", "sitemap.xml"): resp(200, body=SITEMAP_XML)},
+            ),
+        ):
+            result = await check.check_service(service, context)
+
+        assert "sitemap_paths" in result.outputs
+        assert len(result.outputs["sitemap_paths"]["all_paths"]) == 6
+
+    @pytest.mark.asyncio
+    async def test_empty_sitemap(self, service):
+        """Empty sitemap body produces no observations."""
+        check = SitemapCheck()
+        context = {}
+
+        with patch(
+            "app.checks.web.sitemap.check.AsyncHttpClient",
+            return_value=mock_client_multi(
+                response_map={("GET", "sitemap.xml"): resp(200, body="")},
+            ),
+        ):
+            result = await check.check_service(service, context)
+
+        assert result.success
+        assert len(result.observations) == 0
+
+    @pytest.mark.asyncio
+    async def test_malformed_xml(self, service):
+        """Malformed XML is handled gracefully."""
+        check = SitemapCheck()
+        context = {}
+
+        with patch(
+            "app.checks.web.sitemap.check.AsyncHttpClient",
+            return_value=mock_client_multi(
+                response_map={("GET", "sitemap.xml"): resp(200, body="<not valid xml!!!")},
+            ),
+        ):
+            result = await check.check_service(service, context)
+
+        assert result.success
+        assert len(result.observations) == 0

@@ -1,0 +1,30 @@
+id: 5281d675-6068-4559-981a-43f809d8bd8f
+name: hsts_preload
+type: check
+description: Check if domain is on the HSTS preload list (Chromium)
+entry: check.py:HSTSPreloadCheck
+suite: web
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- hsts_preload_info
+intrusive: false
+service_types:
+- http
+- html
+- api
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- HSTS preload verification
+- transport security analysis
+references:
+- RFC 6797
+- hstspreload.org
+reason: Domains not on the HSTS preload list are vulnerable to SSL stripping on first
+  visit

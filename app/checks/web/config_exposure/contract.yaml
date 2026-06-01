@@ -1,0 +1,31 @@
+id: 6c5941be-4155-4199-8204-b2eea745ff7f
+name: config_exposure
+type: check
+description: Parse accessible config files (.env, config.json, etc.) for secrets
+entry: check.py:ConfigExposureCheck
+suite: web
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- config_observations
+intrusive: false
+service_types:
+- http
+- html
+- api
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- configuration analysis
+- secret detection
+references:
+- OWASP WSTG-CONF-05
+- CWE-200
+- CWE-540
+reason: An accessible .env with API keys is game over — no need to probe for prompt
+  leakage when you have the key

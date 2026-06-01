@@ -1,0 +1,32 @@
+id: a8d16d56-ecb2-498e-adc2-4d6d6817df1a
+name: cors
+type: check
+description: Test for overly permissive CORS configurations
+entry: check.py:CorsCheck
+suite: web
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- cors_observations
+intrusive: false
+service_types:
+- http
+- html
+- api
+- ai
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- configuration testing
+- CORS exploitation
+references:
+- OWASP WSTG-CLNT-07
+- CWE-942
+- PortSwigger CORS
+reason: CORS misconfigurations can allow malicious sites to steal data via a user's
+  browser

@@ -2404,6 +2404,8 @@ def dev_migrate_suite(suite: str, rename_map: str | None, dry_run: bool):
 @click.option("--parallel", is_flag=True, help="Run checks in parallel within phases")
 @click.option("--save-baseline", "save_baseline", type=click.Path(), help="Save observation snapshot")
 @click.option("--compare", "compare_to", type=click.Path(exists=True), help="Diff vs a saved snapshot")
+@click.option("--rename-map", "rename_map", type=click.Path(exists=True), help="Category-A rename map (compare)")
+@click.option("--ignore-check", "ignore_checks", multiple=True, help="Drop these checks from the diff (noise floor)")
 def dev_scan_baseline(
     target: str,
     scenario: str,
@@ -2412,6 +2414,8 @@ def dev_scan_baseline(
     parallel: bool,
     save_baseline: str | None,
     compare_to: str | None,
+    rename_map: str | None,
+    ignore_checks: tuple,
 ):
     """Run a scenario scan and snapshot/diff its observations (§9 anchor #2).
 
@@ -2433,7 +2437,12 @@ def dev_scan_baseline(
         scan_diff.save_baseline(Path(save_baseline), snapshot)
         click.echo(click.style(f"Saved observation baseline → {save_baseline}", fg="green"))
     if compare_to:
-        report = scan_diff.compare(Path(compare_to), snapshot)
+        report = scan_diff.compare(
+            Path(compare_to),
+            snapshot,
+            rename_map=_load_rename_map(rename_map),
+            ignore_checks=set(ignore_checks),
+        )
         if report["clean"]:
             click.echo(
                 click.style(
@@ -2450,6 +2459,29 @@ def dev_scan_baseline(
             for name, delta in report["by_check_delta"].items():
                 click.echo(f"    {name}: {delta[0]} -> {delta[1]}", err=True)
             sys.exit(1)
+
+
+@dev_group.command("split-tests")
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--dry-run", is_flag=True, help="Report the split plan without writing")
+def dev_split_tests(path: str, dry_run: bool):
+    """Co-locate a shared test file's classes into each check's tests/ dir (§3/§9).
+
+    Maps each test class to the check it instantiates; cross-cutting classes
+    (registry/coverage) stay in place. Run `ruff --fix --select F401` afterward
+    to prune the copied imports.
+    """
+    _require_source_tree()
+    from app.dev import split_tests
+
+    plan = split_tests.split_test_file(Path(path), dry_run=dry_run)
+    prefix = "[dry-run] " if dry_run else ""
+    for folder, classes in plan.per_check.items():
+        click.echo(f"{prefix}{folder.name}: {len(classes)} class(es)")
+    if plan.residual_classes:
+        click.echo(f"{prefix}residual (kept in place): {len(plan.residual_classes)} class(es)")
+    if plan.deleted_source:
+        click.echo(f"{prefix}source fully co-located → removed")
 
 
 def _print_migrate_result(res) -> None:
