@@ -131,7 +131,7 @@ class TestSimulationConfig:
         """Config loads from valid YAML file."""
         yaml_content = """
 suite: web
-emulates: header_analysis
+emulates: web_header_analysis
 target: example.com
 disposition: headers_found
 output:
@@ -144,7 +144,7 @@ output:
         config = SimulationConfig.from_yaml(yaml_file)
 
         assert config.suite == "web"
-        assert config.emulates == "header_analysis"
+        assert config.emulates == "web_header_analysis"
         assert config.output["headers"]["X-Custom"] == "value"
 
     def test_from_yaml_file_not_found(self, tmp_path: Path):

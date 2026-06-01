@@ -108,7 +108,7 @@ class TestCoverageDataLogic:
 
     SUITE_PATTERNS = {
         "network": ["dns", "network_service_probe", "port"],
-        "web": ["header", "robots", "path", "openapi", "cors", "content"],
+        "web": ["header", "robots", "path", "openapi", "web_cors", "content"],
         "ai": [
             "llm",
             "embedding",

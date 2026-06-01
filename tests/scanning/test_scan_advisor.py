@@ -171,12 +171,12 @@ class TestPartialResults:
 
     def test_flags_skipped_checks(self):
         advisor = _make_advisor(
-            skipped={"header_analysis"},
-            all_check_names={"header_analysis"},
-            check_metadata={"header_analysis": {"conditions": [], "produces": []}},
+            skipped={"web_header_analysis"},
+            all_check_names={"web_header_analysis"},
+            check_metadata={"web_header_analysis": {"conditions": [], "produces": []}},
         )
         recs = advisor.analyze()
-        skipped_recs = [r for r in recs if r.check_name == "header_analysis"]
+        skipped_recs = [r for r in recs if r.check_name == "web_header_analysis"]
         assert len(skipped_recs) == 1
         assert "skipped" in skipped_recs[0].reason.lower()
 

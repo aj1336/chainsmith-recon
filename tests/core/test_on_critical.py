@@ -172,10 +172,10 @@ class TestLauncherAnnotate:
     async def test_annotates_downstream_observations(self):
         """When web check produces critical observation, AI observations get annotated."""
         web_check = FakeCheck(
-            name="header_analysis",
+            name="web_header_analysis",
             produces=["header_observations"],
             _observations=[
-                make_critical_observation(host="target.com", check_name="header_analysis")
+                make_critical_observation(host="target.com", check_name="web_header_analysis")
             ],
             _outputs={"header_observations": True},
         )
@@ -209,22 +209,22 @@ class TestLauncherAnnotate:
     async def test_same_suite_not_annotated(self):
         """Observations from the same suite as the critical are NOT annotated."""
         check1 = FakeCheck(
-            name="header_analysis",
+            name="web_header_analysis",
             produces=["header_observations"],
             _observations=[
-                make_critical_observation(host="target.com", check_name="header_analysis")
+                make_critical_observation(host="target.com", check_name="web_header_analysis")
             ],
             _outputs={"header_observations": True},
         )
         check2 = FakeCheck(
-            name="robots_txt",
+            name="web_robots_txt",
             conditions=[CheckCondition("header_observations", "truthy")],
             _observations=[
                 make_observation(
                     title="Sensitive paths",
                     severity="low",
                     host="target.com",
-                    check_name="robots_txt",
+                    check_name="web_robots_txt",
                 )
             ],
         )
@@ -237,7 +237,9 @@ class TestLauncherAnnotate:
             observations = await launcher.run_all()
 
         # robots_txt is also "web" suite -- should NOT be annotated
-        robots_observation = next(f for f in observations if f.get("check_name") == "robots_txt")
+        robots_observation = next(
+            f for f in observations if f.get("check_name") == "web_robots_txt"
+        )
         raw = robots_observation.get("raw_data") or {}
         assert raw.get("critical_observation_on_host") is not True
 
@@ -249,10 +251,10 @@ class TestLauncherSkipDownstream:
     async def test_skips_downstream_suite(self):
         """AI checks are skipped when web has critical + skip_downstream."""
         web_check = FakeCheck(
-            name="header_analysis",
+            name="web_header_analysis",
             produces=["header_observations"],
             _observations=[
-                make_critical_observation(host="target.com", check_name="header_analysis")
+                make_critical_observation(host="target.com", check_name="web_header_analysis")
             ],
             _outputs={"header_observations": True},
         )
@@ -278,29 +280,29 @@ class TestLauncherSkipDownstream:
 
         # Only the web observation should be present
         assert len(observations) == 1
-        assert observations[0]["check_name"] == "header_analysis"
+        assert observations[0]["check_name"] == "web_header_analysis"
         assert "llm_endpoint" in launcher.skipped
 
     @pytest.mark.asyncio
     async def test_same_suite_not_skipped(self):
         """Checks in the same suite are NOT skipped."""
         check1 = FakeCheck(
-            name="header_analysis",
+            name="web_header_analysis",
             produces=["header_observations"],
             _observations=[
-                make_critical_observation(host="target.com", check_name="header_analysis")
+                make_critical_observation(host="target.com", check_name="web_header_analysis")
             ],
             _outputs={"header_observations": True},
         )
         check2 = FakeCheck(
-            name="path_probe",
+            name="web_path_probe",
             conditions=[CheckCondition("header_observations", "truthy")],
             _observations=[
                 make_observation(
                     title="Path found",
                     severity="info",
                     host="target.com",
-                    check_name="path_probe",
+                    check_name="web_path_probe",
                 )
             ],
         )
@@ -314,7 +316,7 @@ class TestLauncherSkipDownstream:
 
         # Both are web suite -- path_probe should NOT be skipped
         assert len(observations) == 2
-        assert "path_probe" not in launcher.skipped
+        assert "web_path_probe" not in launcher.skipped
 
 
 class TestLauncherStop:
@@ -324,10 +326,10 @@ class TestLauncherStop:
     async def test_stops_scan(self):
         """Scan halts immediately when critical observation + on_critical='stop'."""
         web_check = FakeCheck(
-            name="header_analysis",
+            name="web_header_analysis",
             produces=["header_observations"],
             _observations=[
-                make_critical_observation(host="target.com", check_name="header_analysis")
+                make_critical_observation(host="target.com", check_name="web_header_analysis")
             ],
             _outputs={"header_observations": True},
         )
@@ -364,14 +366,14 @@ class TestLauncherNoCriticals:
     async def test_no_skip_without_criticals(self):
         """Non-critical observations don't trigger any on_critical behavior."""
         check1 = FakeCheck(
-            name="header_analysis",
+            name="web_header_analysis",
             produces=["header_observations"],
             _observations=[
                 make_observation(
                     title="Low observation",
                     severity="low",
                     host="target.com",
-                    check_name="header_analysis",
+                    check_name="web_header_analysis",
                 )
             ],
             _outputs={"header_observations": True},
@@ -406,10 +408,10 @@ class TestLauncherCriticalHosts:
     @pytest.mark.asyncio
     async def test_critical_hosts_in_context(self):
         web_check = FakeCheck(
-            name="header_analysis",
+            name="web_header_analysis",
             _observations=[
-                make_critical_observation(host="host1.com", check_name="header_analysis"),
-                make_critical_observation(host="host2.com", check_name="header_analysis"),
+                make_critical_observation(host="host1.com", check_name="web_header_analysis"),
+                make_critical_observation(host="host2.com", check_name="web_header_analysis"),
             ],
         )
 
@@ -432,10 +434,10 @@ class TestLauncherPerSuiteOverride:
     async def test_per_suite_skip_with_global_annotate(self):
         """Global=annotate but web=skip_downstream: downstream checks should be skipped."""
         web_check = FakeCheck(
-            name="header_analysis",
+            name="web_header_analysis",
             produces=["header_observations"],
             _observations=[
-                make_critical_observation(host="target.com", check_name="header_analysis")
+                make_critical_observation(host="target.com", check_name="web_header_analysis")
             ],
             _outputs={"header_observations": True},
         )
@@ -462,16 +464,16 @@ class TestLauncherPerSuiteOverride:
 
         # The web suite override should cause downstream skipping
         assert len(observations) == 1
-        assert observations[0]["check_name"] == "header_analysis"
+        assert observations[0]["check_name"] == "web_header_analysis"
         assert "llm_endpoint" in launcher.skipped
 
     @pytest.mark.asyncio
     async def test_per_suite_stop_with_global_annotate(self):
         """Global=annotate but web=stop: scan should stop on web critical."""
         web_check = FakeCheck(
-            name="header_analysis",
+            name="web_header_analysis",
             _observations=[
-                make_critical_observation(host="target.com", check_name="header_analysis")
+                make_critical_observation(host="target.com", check_name="web_header_analysis")
             ],
         )
 

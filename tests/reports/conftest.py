@@ -132,7 +132,7 @@ async def _create_populated_scan(
             {
                 "title": "Missing CSP",
                 "severity": "medium",
-                "check_name": "header_analysis",
+                "check_name": "web_header_analysis",
                 "host": "example.com",
                 "suite": "web",
                 "description": "No CSP header found",
@@ -178,9 +178,9 @@ async def _create_populated_scan(
                 "observations": 1,
                 "duration_ms": 800,
             },
-            {"check": "header_analysis", "suite": "web", "event": "started"},
+            {"check": "web_header_analysis", "suite": "web", "event": "started"},
             {
-                "check": "header_analysis",
+                "check": "web_header_analysis",
                 "suite": "web",
                 "event": "completed",
                 "observations": 1,

@@ -65,7 +65,7 @@ class TestTechnicalReportSARIF:
         rule_ids = [r["id"] for r in rules]
         assert "xss_reflected" in rule_ids
         assert "sqli" in rule_ids
-        assert "header_analysis" in rule_ids
+        assert "web_header_analysis" in rule_ids
         assert "server_header" in rule_ids
 
     @pytest.mark.asyncio

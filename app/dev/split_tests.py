@@ -40,7 +40,7 @@ def _check_class_to_folder(tree: ast.Module, checks_root: Path) -> dict[str, Pat
     Import-path-independent: scans every component's contract.yaml for its `entry`
     class name and keys on that. This works whether a test imports the class via
     the suite package (`from app.checks.web import CorsCheck`), the component
-    package (`from app.checks.web.cors import CorsCheck`), or the `.check`
+    package (`from app.checks.web.web_cors import CorsCheck`), or the `.check`
     submodule — all three bind the same class name, and we map by name. (The
     `tree` arg is unused now but kept for signature stability.)
     """

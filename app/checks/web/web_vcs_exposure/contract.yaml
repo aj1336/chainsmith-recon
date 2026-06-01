@@ -1,0 +1,30 @@
+id: 3d28a725-30c3-4200-86ab-99d7ef739352
+name: web_vcs_exposure
+type: check
+description: Assess depth of exposed .git/.svn/.hg repositories
+entry: check.py:VCSExposureCheck
+suite: web
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- vcs_observations
+intrusive: false
+service_types:
+- http
+- html
+- api
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- VCS metadata enumeration
+- source code exposure assessment
+references:
+- OWASP WSTG-CONF-05
+- CWE-538
+reason: Exposed .git allows full source code recovery including API keys, model configs,
+  and credentials

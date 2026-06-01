@@ -1,0 +1,32 @@
+id: 1bbca8a6-1de5-43ec-8e83-0a3c8898ab5d
+name: web_openapi_discovery
+type: check
+description: Find exposed API documentation and extract endpoint information
+entry: check.py:OpenAPICheck
+suite: web
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- api_endpoints
+- openapi_specs
+intrusive: false
+service_types:
+- http
+- api
+- ai
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- API enumeration
+- documentation discovery
+references:
+- OWASP API Security Top 10
+- OWASP API1:2023
+- OpenAPI Specification
+reason: OpenAPI docs reveal all API endpoints, parameters, auth mechanisms, and data
+  models

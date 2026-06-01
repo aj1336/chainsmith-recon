@@ -155,7 +155,7 @@ class TestViolationLogger:
             reason="Host in exclusion list",
             target_host="admin.example.com",
             target_path="/admin",
-            check_name="path_probe",
+            check_name="web_path_probe",
             tool_name="http_client",
             blocked=True,
             user_acknowledged=True,

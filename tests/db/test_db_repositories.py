@@ -69,7 +69,7 @@ def sample_observations():
             "title": "Missing Content-Security-Policy",
             "description": "No CSP header found",
             "severity": "medium",
-            "check_name": "header_analysis",
+            "check_name": "web_header_analysis",
             "suite": "web",
             "host": "example.com",
             "target_url": "http://example.com",
@@ -113,8 +113,8 @@ def sample_check_log():
         {"check": "network_port_scan", "event": "completed", "observations": 1, "suite": "network"},
         {"check": "xss_reflected", "event": "started", "suite": "web"},
         {"check": "xss_reflected", "event": "completed", "observations": 1, "suite": "web"},
-        {"check": "header_analysis", "event": "started", "suite": "web"},
-        {"check": "header_analysis", "event": "completed", "observations": 1, "suite": "web"},
+        {"check": "web_header_analysis", "event": "started", "suite": "web"},
+        {"check": "web_header_analysis", "event": "completed", "observations": 1, "suite": "web"},
     ]
 
 

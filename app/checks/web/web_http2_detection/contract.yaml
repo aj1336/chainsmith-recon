@@ -1,0 +1,30 @@
+id: 4dc0b27b-7318-47de-982e-c0875f0c87b7
+name: web_http2_detection
+type: check
+description: Check for HTTP/2 (ALPN) and HTTP/3 (Alt-Svc) protocol support
+entry: check.py:HTTP2DetectionCheck
+suite: web
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- http_protocols
+intrusive: false
+service_types:
+- http
+- html
+- api
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- protocol detection
+- infrastructure profiling
+references:
+- RFC 7540
+- RFC 9114
+reason: Protocol detection profiles infrastructure maturity and identifies QUIC/HTTP3
+  endpoints

@@ -1,0 +1,30 @@
+id: 3c8c297d-1064-4af1-9f0f-7afeef4c13e4
+name: web_waf_detection
+type: check
+description: Detect WAF/CDN from headers, cookies, and error page signatures
+entry: check.py:WAFDetectionCheck
+suite: web
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- waf_detected
+intrusive: false
+service_types:
+- http
+- html
+- api
+- ai
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- WAF fingerprinting
+- CDN detection
+references:
+- OWASP WSTG-INFO-10
+- CWE-693
+reason: WAF/CDN presence affects interpretation of all downstream check results

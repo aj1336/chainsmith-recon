@@ -1,0 +1,31 @@
+id: d8d5c261-fc01-460e-a731-c7af3840480b
+name: web_path_probe
+type: check
+description: Check for common admin panels, config files, and sensitive endpoints
+entry: check.py:PathProbeCheck
+suite: web
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- discovered_paths
+intrusive: false
+service_types:
+- http
+- html
+- api
+- ai
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- directory enumeration
+- forced browsing
+- path traversal
+references:
+- OWASP WSTG-CONF-05
+- CWE-538
+reason: Common paths often lead to admin panels, backups, or configuration files

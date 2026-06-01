@@ -1,0 +1,31 @@
+id: 348e30b9-d68e-4c71-937b-12d8d5fac556
+name: web_cookie_security
+type: check
+description: Check cookies for missing Secure, HttpOnly, SameSite attributes
+entry: check.py:CookieSecurityCheck
+suite: web
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- cookie_observations
+intrusive: false
+service_types:
+- http
+- html
+- api
+- ai
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- cookie attribute analysis
+- session management testing
+references:
+- OWASP WSTG-SESS-02
+- CWE-614
+- CWE-1004
+reason: Insecure cookies enable session theft via XSS, network sniffing, and CSRF

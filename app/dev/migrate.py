@@ -235,7 +235,7 @@ def sanitize_self_imports(check_py: str, new_pkg_dotted: str) -> tuple[str, list
     """Remove any self-referential import from the generated check.py.
 
     A freshly-migrated `check.py` lives at `<new_pkg_dotted>.check`; an import line
-    `from <new_pkg_dotted>...` (e.g. `from app.checks.web.cors.check import ...`)
+    `from <new_pkg_dotted>...` (e.g. `from app.checks.web.web_cors.check import ...`)
     is always wrong — it makes the module import from itself. This defends against
     a class of codemod edge cases observed in 56.2 (cors/openapi) regardless of the
     exact trigger. Returns (clean_text, removed_lines).

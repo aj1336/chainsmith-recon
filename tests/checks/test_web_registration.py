@@ -17,11 +17,11 @@ class TestCheckRegistration:
         web_names = {c.name for c in web_checks}
 
         expected = {
-            "webdav",
-            "vcs_exposure",
-            "config_exposure",
-            "directory_listing",
-            "default_creds",
-            "debug_endpoints",
+            "web_webdav",
+            "web_vcs_exposure",
+            "web_config_exposure",
+            "web_directory_listing",
+            "web_default_creds",
+            "web_debug_endpoints",
         }
         assert expected.issubset(web_names), f"Missing: {expected - web_names}"

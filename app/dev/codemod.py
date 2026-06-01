@@ -170,8 +170,8 @@ def rewrite_imports(
     entry class, not module-level symbols (e.g. AsyncHttpClient).
 
     Args:
-        old_dotted: e.g. "app.checks.web.cors"
-        new_pkg_dotted: the new folder package, e.g. "app.checks.web.cors"
+        old_dotted: e.g. "app.checks.web.web_cors"
+        new_pkg_dotted: the new folder package, e.g. "app.checks.web.web_cors"
         entry_stem: the entry module stem inside the folder, e.g. "check"
         search_roots: directories to scan for *.py files.
         dry_run: if True, do not write; only report what would change.

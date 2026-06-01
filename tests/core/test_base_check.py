@@ -128,14 +128,14 @@ class TestObservation:
             evidence="X-Frame-Options: missing",
             target=sample_service,
             target_url="http://test.local:8080/",
-            check_name="header_analysis",
+            check_name="web_header_analysis",
             references=["OWASP-A05"],
         )
         d = f.to_dict()
         assert d["id"] == "F-002"
         assert d["title"] == "Header Issue"
         assert d["severity"] == "medium"
-        assert d["check_name"] == "header_analysis"
+        assert d["check_name"] == "web_header_analysis"
         assert d["target_url"] == "http://test.local:8080/"
         assert "OWASP-A05" in d["references"]
 

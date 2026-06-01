@@ -1,0 +1,29 @@
+id: 2bc95fe8-0c46-4cd5-bfc6-2a31d7b09d4d
+name: web_error_page
+type: check
+description: Trigger error responses and fingerprint framework from error pages
+entry: check.py:ErrorPageCheck
+suite: web
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- error_page_info
+intrusive: false
+service_types:
+- http
+- html
+- api
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- error page analysis
+- technology fingerprinting
+references:
+- OWASP WSTG-INFO-08
+- CWE-209
+reason: Error pages reveal framework identity and debug mode, enabling targeted attacks

@@ -343,7 +343,7 @@
         // Phase categorization for checks (maps check names to UI phases)
         const phaseMapping = {
             'discovery': ['network_dns_enumeration', 'network_service_probe'],
-            'probing': ['header_analysis', 'robots_txt', 'path_probe', 'openapi_discovery', 'cors', 'network_port_scan'],
+            'probing': ['web_header_analysis', 'web_robots_txt', 'web_path_probe', 'web_openapi_discovery', 'web_cors', 'network_port_scan'],
             'analysis': ['ai_framework_fingerprint', 'ai_error_leakage', 'model_info'],
             'ai': ['llm_endpoint', 'embedding_endpoint', 'tool_discovery', 'prompt_leakage', 'rate_limit', 'content_filter', 'context_window', 'mcp', 'agent', 'rag', 'cag']
         };
@@ -597,7 +597,7 @@
                         const name = check.name.toLowerCase();
                         if (name.includes('dns') || name.includes('network_service_probe')) {
                             checkPhase = 'discovery';
-                        } else if (name.includes('header') || name.includes('robot') || name.includes('path') || name.includes('cors') || name.includes('openapi') || name.includes('fingerprint') || name.includes('error') || name.includes('model_info')) {
+                        } else if (name.includes('header') || name.includes('robot') || name.includes('path') || name.includes('web_cors') || name.includes('openapi') || name.includes('fingerprint') || name.includes('error') || name.includes('model_info')) {
                             checkPhase = 'target-analysis';
                         } else {
                             checkPhase = 'ai-checks';

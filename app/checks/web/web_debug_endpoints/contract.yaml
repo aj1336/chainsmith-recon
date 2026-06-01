@@ -1,0 +1,30 @@
+id: e1b462d8-ee06-4131-9889-b5f42b9b51f6
+name: web_debug_endpoints
+type: check
+description: Analyze exposed debug/actuator/status endpoints for sensitive data
+entry: check.py:DebugEndpointCheck
+suite: web
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- debug_observations
+intrusive: false
+service_types:
+- http
+- html
+- api
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- debug endpoint analysis
+- information disclosure
+references:
+- OWASP WSTG-CONF-05
+- CWE-215
+reason: Debug endpoints frequently expose environment variables, connection strings,
+  and internal IPs

@@ -103,8 +103,8 @@ CHAIN_PATTERNS = [
         "description": "Exposed API documentation combined with endpoint discovery reveals full attack surface",
         "severity": "medium",
         "required_observations": [
-            {"check_name": "openapi_discovery"},
-            {"check_name": "path_probe", "title_contains": "openapi"},
+            {"check_name": "web_openapi_discovery"},
+            {"check_name": "web_path_probe", "title_contains": "openapi"},
         ],
         "exploitation_steps": [
             "Access the exposed OpenAPI/Swagger documentation",
@@ -137,7 +137,7 @@ CHAIN_PATTERNS = [
         "description": "Missing security headers enable client-side attacks",
         "severity": "low",
         "required_observations": [
-            {"check_name": "header_analysis", "title_contains": "Missing security headers"}
+            {"check_name": "web_header_analysis", "title_contains": "Missing security headers"}
         ],
         "exploitation_steps": [
             "Note missing headers (CSP, X-Frame-Options, etc.)",
@@ -154,7 +154,7 @@ CHAIN_PATTERNS = [
         "severity": "medium",
         "required_observations": [
             {
-                "check_name": "path_probe",
+                "check_name": "web_path_probe",
                 "title_contains": "Protected path",
                 "title_contains_2": "admin",
             }
@@ -173,7 +173,7 @@ CHAIN_PATTERNS = [
         "description": "Debug endpoints may leak sensitive configuration or allow manipulation",
         "severity": "high",
         "required_observations": [
-            {"check_name": "openapi_discovery", "evidence_contains": "debug"}
+            {"check_name": "web_openapi_discovery", "evidence_contains": "debug"}
         ],
         "exploitation_steps": [
             "Access discovered debug endpoints",
@@ -204,7 +204,7 @@ CHAIN_PATTERNS = [
         "severity": "high",
         "required_observations": [
             {"check_name": "llm_endpoint_discovery"},
-            {"check_name": "openapi_discovery"},
+            {"check_name": "web_openapi_discovery"},
         ],
         "exploitation_steps": [
             "Identify chat/completion endpoints from API documentation",
@@ -702,7 +702,7 @@ CHAIN_PATTERNS = [
         "description": "Permissive CORS on AI endpoints allows any website to make cross-origin requests to the LLM",
         "severity": "high",
         "required_observations": [
-            {"check_name": "cors"},
+            {"check_name": "web_cors"},
             {"check_name": "llm_endpoint_discovery"},
         ],
         "exploitation_steps": [
@@ -719,7 +719,7 @@ CHAIN_PATTERNS = [
         "description": "URL-accepting parameters combined with agent callback injection enables server-side request forgery",
         "severity": "high",
         "required_observations": [
-            {"check_name": "ssrf_indicator"},
+            {"check_name": "web_ssrf_indicator"},
             {"check_name": "agent_callback_injection"},
         ],
         "exploitation_steps": [
@@ -736,7 +736,7 @@ CHAIN_PATTERNS = [
         "description": "Leaked config files reveal API keys and settings that inform targeted attacks against the identified AI framework",
         "severity": "medium",
         "required_observations": [
-            {"check_name": "config_exposure"},
+            {"check_name": "web_config_exposure"},
             {"check_name": "ai_framework_fingerprint"},
         ],
         "exploitation_steps": [
@@ -770,8 +770,8 @@ CHAIN_PATTERNS = [
         "description": "Full API schema reveals data models; mass assignment confirms writable fields that should be protected",
         "severity": "high",
         "required_observations": [
-            {"check_name": "openapi_discovery"},
-            {"check_name": "mass_assignment"},
+            {"check_name": "web_openapi_discovery"},
+            {"check_name": "web_mass_assignment"},
         ],
         "exploitation_steps": [
             "Extract complete data models from exposed OpenAPI/Swagger documentation",
@@ -787,8 +787,8 @@ CHAIN_PATTERNS = [
         "description": "Authentication mechanism identified and default credentials confirmed working",
         "severity": "high",
         "required_observations": [
-            {"check_name": "auth_detection"},
-            {"check_name": "default_creds"},
+            {"check_name": "web_auth_detection"},
+            {"check_name": "web_default_creds"},
         ],
         "exploitation_steps": [
             "Identify the authentication mechanism in use (Basic, Bearer, OAuth, form)",

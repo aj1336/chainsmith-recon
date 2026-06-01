@@ -88,7 +88,7 @@ class TestViolationEntry:
             violation_type="excluded_target",
             target_host="admin.example.com",
             target_path="/admin",
-            check_name="path_probe",
+            check_name="web_path_probe",
             tool_name="http_client",
             reason="Host in exclusion list",
             blocked=True,
