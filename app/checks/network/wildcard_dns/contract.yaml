@@ -1,0 +1,26 @@
+id: d8457b97-5038-42e7-ad4a-c80e7c1e2a0f
+name: wildcard_dns
+type: check
+description: Detect wildcard DNS records that cause false subdomain discoveries
+entry: check.py:WildcardDnsCheck
+suite: network
+depends_on: []
+produces:
+- wildcard_dns
+intrusive: false
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- wildcard DNS detection
+- DNS reconnaissance
+references:
+- OWASP WSTG-INFO-03
+- RFC 4592 — The Role of Wildcards in the DNS
+reason: Wildcard DNS records cause subdomain enumeration to report every candidate
+  as 'discovered', producing misleading results. Detecting wildcards early prevents
+  wasted effort downstream.

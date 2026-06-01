@@ -1,0 +1,31 @@
+id: 7229479e-1250-41a1-b7eb-c345f4480763
+name: tls_analysis
+type: check
+description: TLS certificate inspection and protocol version detection
+entry: check.py:TlsAnalysisCheck
+suite: network
+depends_on:
+- output_name: services
+  operator: truthy
+produces:
+- tls_data
+- tls_hosts
+intrusive: false
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- TLS certificate analysis
+- SAN enumeration
+- protocol version detection
+references:
+- OWASP WSTG-CRYP-01 — Testing for Weak TLS/SSL Ciphers
+- CWE-295 — Improper Certificate Validation
+- CWE-326 — Inadequate Encryption Strength
+reason: TLS certificates reveal additional hostnames via SANs that subdomain enumeration
+  may have missed (internal names, staging environments). Weak TLS configurations
+  and expired/self-signed certificates are security observations in themselves.

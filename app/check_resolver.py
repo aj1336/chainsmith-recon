@@ -149,21 +149,6 @@ def get_real_checks() -> list:
         UndeclaredCapabilityCheck,
         WebSocketTransportCheck,
     )
-    from app.checks.network import (
-        BannerGrabCheck,
-        DnsEnumerationCheck,
-        DnsRecordCheck,
-        GeoIpCheck,
-        HttpMethodEnumCheck,
-        IPv6DiscoveryCheck,
-        PortScanCheck,
-        ReverseDnsCheck,
-        ServiceProbeCheck,
-        TlsAnalysisCheck,
-        TracerouteCheck,
-        WhoisLookupCheck,
-        WildcardDnsCheck,
-    )
     from app.checks.rag import (
         RAGAdversarialEmbeddingCheck,
         RAGAuthBypassCheck,
@@ -187,22 +172,9 @@ def get_real_checks() -> list:
     # Instantiate all checks in dependency order
     checks = [
         # Network Phase 1 (no dependencies, can run in parallel)
-        DnsEnumerationCheck(),
-        WildcardDnsCheck(),
-        DnsRecordCheck(),
-        WhoisLookupCheck(),
         # Network Phase 2 (depends on dns_enumeration)
-        GeoIpCheck(),
-        ReverseDnsCheck(),
-        IPv6DiscoveryCheck(),
-        PortScanCheck(),
         # Network Phase 4 (depends on services/port_scan)
-        TlsAnalysisCheck(),
-        ServiceProbeCheck(),
-        BannerGrabCheck(),
         # Network Phase 5 (depends on service_probe)
-        HttpMethodEnumCheck(),
-        TracerouteCheck(),
         # Web Phase 1 (depends on services)
         # Web Phase 2 (depends on Phase 1)
         # Web critical observations (Phase 6a — depends on services, some use path_probe output)

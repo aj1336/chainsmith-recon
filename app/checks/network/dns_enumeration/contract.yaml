@@ -1,0 +1,28 @@
+id: 9ba20240-5bbb-467d-bcb4-fe024a891326
+name: dns_enumeration
+type: check
+description: Enumerate subdomains via DNS resolution against a target domain
+entry: check.py:DnsEnumerationCheck
+suite: network
+depends_on: []
+produces:
+- target_hosts
+- dns_records
+intrusive: false
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+techniques:
+- T1590.002
+- subdomain enumeration
+- DNS brute-force
+references:
+- OWASP WSTG-INFO-03
+- PTES - Intelligence Gathering
+- https://attack.mitre.org/techniques/T1590/002/
+reason: DNS enumeration reveals subdomains and services in the target's infrastructure,
+  expanding attack surface visibility.

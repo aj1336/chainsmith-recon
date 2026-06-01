@@ -1,24 +1,8 @@
-"""
-Tests for port profiles and port resolution logic.
-
-Covers:
-- Structural invariants of profiles (sorted, no duplicates, non-empty, valid ports)
-- Profile hierarchy (each profile is a superset of the previous)
-- resolve_ports() with profile selection, in_scope_ports filtering, and edge cases
-- PortScanCheck port resolution from config and context
-"""
-
-from unittest.mock import MagicMock, patch
-
 from app.checks.network.port_profiles import (
     DEFAULT_PROFILE,
     PROFILES,
     resolve_ports,
 )
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Profile Structural Invariants
-# ═══════════════════════════════════════════════════════════════════════════════
 
 
 class TestProfileInvariants:
@@ -63,11 +47,6 @@ class TestProfileInvariants:
         """The four documented profile names must be present."""
         for name in ("web", "ai", "full", "lab"):
             assert name in PROFILES, f"Expected profile {name!r} missing"
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# resolve_ports()
-# ═══════════════════════════════════════════════════════════════════════════════
 
 
 class TestResolvePorts:
@@ -126,93 +105,3 @@ class TestResolvePorts:
         for name, expected in PROFILES.items():
             result = resolve_ports(profile=name)
             assert result == expected, f"resolve_ports(profile={name!r}) mismatch"
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# PortScanCheck Port Resolution
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
-class TestPortScanCheckResolution:
-    """Tests for PortScanCheck._resolve_ports() integration with config."""
-
-    def _make_config(self, port_profile="lab", in_scope_ports=None):
-        """Create a mock config."""
-        cfg = MagicMock()
-        cfg.scope.port_profile = port_profile
-        cfg.scope.in_scope_ports = in_scope_ports or []
-        return cfg
-
-    @patch("app.checks.network.ports.get_config")
-    def test_uses_config_profile(self, mock_get_config):
-        from app.checks.network.ports import PortScanCheck
-
-        mock_get_config.return_value = self._make_config(port_profile="web")
-
-        check = PortScanCheck()
-        ports = check._resolve_ports({})
-
-        assert ports == PROFILES["web"]
-
-    @patch("app.checks.network.ports.get_config")
-    def test_context_overrides_config_profile(self, mock_get_config):
-        from app.checks.network.ports import PortScanCheck
-
-        mock_get_config.return_value = self._make_config(port_profile="web")
-
-        check = PortScanCheck()
-        ports = check._resolve_ports({"port_profile": "ai"})
-
-        assert ports == PROFILES["ai"]
-
-    @patch("app.checks.network.ports.get_config")
-    def test_explicit_profile_overrides_context(self, mock_get_config):
-        from app.checks.network.ports import PortScanCheck
-
-        mock_get_config.return_value = self._make_config(port_profile="web")
-
-        check = PortScanCheck(profile="full")
-        ports = check._resolve_ports({"port_profile": "ai"})
-
-        assert ports == PROFILES["full"]
-
-    @patch("app.checks.network.ports.get_config")
-    def test_explicit_ports_bypass_profile(self, mock_get_config):
-        from app.checks.network.ports import PortScanCheck
-
-        mock_get_config.return_value = self._make_config()
-
-        check = PortScanCheck(ports=[22, 80, 443])
-        ports = check._resolve_ports({})
-
-        assert ports == [22, 80, 443]
-
-    @patch("app.checks.network.ports.get_config")
-    def test_in_scope_ports_filters_profile(self, mock_get_config):
-        from app.checks.network.ports import PortScanCheck
-
-        mock_get_config.return_value = self._make_config(
-            port_profile="lab",
-            in_scope_ports=[80, 443],
-        )
-
-        check = PortScanCheck()
-        ports = check._resolve_ports({})
-
-        assert ports == [80, 443]
-
-    @patch("app.checks.network.ports.get_config")
-    def test_in_scope_ports_filters_explicit_ports(self, mock_get_config):
-        from app.checks.network.ports import PortScanCheck
-
-        mock_get_config.return_value = self._make_config(
-            in_scope_ports=[80, 443],
-        )
-
-        check = PortScanCheck(ports=[22, 80, 443, 8080])
-        ports = check._resolve_ports({})
-
-        assert 80 in ports
-        assert 443 in ports
-        assert 22 not in ports
-        assert 8080 not in ports

@@ -1,0 +1,29 @@
+id: ab5bb8d9-6981-4570-94d2-c69cbf821335
+name: geoip
+type: check
+description: GeoIP and ASN lookup for resolved IP addresses
+entry: check.py:GeoIpCheck
+suite: network
+depends_on:
+- output_name: dns_records
+  operator: truthy
+produces:
+- geoip_data
+intrusive: false
+service_types: []
+parallel_safe: false
+outputs:
+  observations:
+  - Observation
+side_effects:
+- network
+- filesystem
+techniques:
+- IP geolocation
+- ASN classification
+- infrastructure mapping
+references:
+- PTES - Intelligence Gathering
+- https://attack.mitre.org/techniques/T1590/
+reason: IP geolocation and ASN data reveal hosting providers, geographic distribution,
+  and unexpected infrastructure (e.g., residential IPs hosting production services).

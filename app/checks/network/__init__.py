@@ -22,7 +22,7 @@ from app.checks.network.dns_records import DnsRecordCheck
 from app.checks.network.geoip import GeoIpCheck
 from app.checks.network.http_method_enum import HttpMethodEnumCheck
 from app.checks.network.ipv6_discovery import IPv6DiscoveryCheck
-from app.checks.network.ports import PortScanCheck
+from app.checks.network.port_scan import PortScanCheck
 from app.checks.network.reverse_dns import ReverseDnsCheck
 from app.checks.network.service_probe import ServiceProbeCheck
 from app.checks.network.tls_analysis import TlsAnalysisCheck

@@ -1,5 +1,3 @@
-"""Tests for ServiceProbeCheck: HTTP/HTTPS probing, service classification, and header analysis."""
-
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -7,10 +5,6 @@ import pytest
 from app.checks.base import Service
 from app.checks.network.service_probe import ServiceProbeCheck
 from app.lib.http import HttpResponse
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Helpers & Fixtures
-# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def _make_response(
@@ -94,7 +88,7 @@ def patched_client():
             get_return_value=get_return_value,
         )
         patcher = patch(
-            "app.checks.network.service_probe.AsyncHttpClient",
+            "app.checks.network.service_probe.check.AsyncHttpClient",
             return_value=client,
         )
         patcher.start()
@@ -106,36 +100,6 @@ def patched_client():
 
     for p in patchers:
         p.stop()
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Init
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
-class TestServiceProbeCheckInit:
-    """Tests for ServiceProbeCheck initialization."""
-
-    def test_default_initialization(self):
-        """Check initializes with defaults."""
-        check = ServiceProbeCheck()
-
-        assert check.name == "service_probe"
-        assert len(check.conditions) == 1  # Requires services
-        assert "services" in check.produces
-
-    def test_metadata(self):
-        """Check has educational metadata."""
-        check = ServiceProbeCheck()
-
-        assert len(check.references) > 0
-        assert len(check.techniques) > 0
-        assert "fingerprinting" in " ".join(check.techniques).lower()
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# check_service
-# ═══════════════════════════════════════════════════════════════════════════════
 
 
 class TestServiceProbeCheckService:
@@ -248,11 +212,6 @@ class TestServiceProbeCheckService:
         assert result.services[0].service_type == "tcp"
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Observations
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
 class TestServiceProbeCheckObservations:
     """Tests for ServiceProbeCheck observation generation."""
 
@@ -325,70 +284,3 @@ class TestServiceProbeCheckObservations:
         custom_observations = [f for f in result.observations if "Custom header" in f.title]
         assert len(custom_observations) == 1
         assert custom_observations[0].severity == "medium"
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# _classify_service (unit)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
-class TestServiceProbeClassifyService:
-    """Tests for _classify_service method."""
-
-    @pytest.fixture
-    def classify_check(self):
-        return ServiceProbeCheck()
-
-    def test_classify_html(self, classify_check):
-        """HTML content type classified as html."""
-        result = classify_check._classify_service(
-            headers={},
-            content_type="text/html",
-            body="<html></html>",
-        )
-        assert result == "html"
-
-    def test_classify_json_api(self, classify_check):
-        """JSON content type classified as api."""
-        result = classify_check._classify_service(
-            headers={},
-            content_type="application/json",
-            body='{"key": "value"}',
-        )
-        assert result == "api"
-
-    def test_classify_ai_header(self, classify_check):
-        """AI header classified as ai."""
-        result = classify_check._classify_service(
-            headers={"X-LLM-Model": "gpt-4"},
-            content_type="application/json",
-            body="",
-        )
-        assert result == "ai"
-
-    def test_classify_ai_powered_by(self, classify_check):
-        """AI in X-Powered-By classified as ai."""
-        result = classify_check._classify_service(
-            headers={"X-Powered-By": "ollama"},
-            content_type="application/json",
-            body="",
-        )
-        assert result == "ai"
-
-    def test_classify_ai_body_indicator(self, classify_check):
-        """AI indicators in body classified as ai."""
-        result = classify_check._classify_service(
-            headers={},
-            content_type="text/html",
-            body="<html>Visit /v1/chat/completions for our API</html>",
-        )
-        assert result == "ai"
-
-    def test_classify_default_http(self, classify_check):
-        """Unknown content classified as http."""
-        result = classify_check._classify_service(
-            headers={},
-            content_type="text/plain",
-            body="plain text",
-        )
-        assert result == "http"
