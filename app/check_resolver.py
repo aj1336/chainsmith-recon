@@ -70,54 +70,18 @@ def resolve_checks(
 
 
 def get_real_checks() -> list:
-    """Get all real check instances."""
+    """Get all real check instances via auto-discovery (Phase 56).
 
-    # Instantiate all checks in dependency order
-    checks = [
-        # Network Phase 1 (no dependencies, can run in parallel)
-        # Network Phase 2 (depends on dns_enumeration)
-        # Network Phase 4 (depends on services/port_scan)
-        # Network Phase 5 (depends on service_probe)
-        # Web Phase 1 (depends on services)
-        # Web Phase 2 (depends on Phase 1)
-        # Web critical observations (Phase 6a — depends on services, some use path_probe output)
-        # Web Phase 4 (depends on Phase 2-3)
-        # AI discovery (depends on services)
-        # AI Phase 2 (depends on chat_endpoints)
-        # AI Phase 3 (depends on Phase 2 results)
-        # AI Phase 4 (uses filter/tool knowledge from Phase 2-3)
-        # Agent Phase 1 (depends on services — discovery)
-        # Agent Phase 2 (depends on agent_endpoints)
-        # Agent Phase 3 (depends on Phase 2 — active probing)
-        # Agent Phase 4 (depends on Phase 2-3 — framework-specific)
-        # Agent Phase 5 (depends on multi-agent detection)
-        # RAG Phase 1 (depends on services — discovery)
-        # RAG Phase 2 (depends on rag_endpoints / vector_stores)
-        # RAG Phase 3 (depends on Phase 1-2 — read-only probing)
-        # RAG Phase 4 (depends on Phase 2-3 — write/intrusive)
-        # RAG Phase 5 (depends on Phase 3-4 — advanced)
-        # CAG Phase 1 (depends on services — discovery)
-        # CAG Phase 2 (depends on cag_endpoints — infrastructure analysis)
-        # CAG Phase 3 (depends on Phase 1-2 — deep probing)
-        # CAG Phase 4 (active exploitation — intrusive)
-        # CAG Phase 5 (advanced — infrastructure-dependent)
-    ]
-
-    logger.info(f"Loaded {len(checks)} community checks")
-
-    # Auto-discovered components (Phase 56): checks migrated to the folder shape
-    # (contract.yaml + config.yaml) are discovered here and removed from the hand
-    # list above. During the suite-by-suite migration the two coexist; the hand
-    # list shrinks as `discovered` grows. Replaces get_real_checks() entirely once
-    # all suites are migrated (56.9).
+    Every check now lives in the folder shape (``contract.yaml`` + ``config.yaml``)
+    and is discovered by ``component_loader``; the old hand-maintained import list
+    is gone (retired in 56.9 once all seven suites were migrated).
+    """
     from pathlib import Path
 
     from app.component_loader import discover_components
 
-    discovered = discover_components(Path(__file__).parent / "checks", "check")
-    if discovered:
-        checks.extend(discovered)
-        logger.info(f"Loaded {len(discovered)} auto-discovered checks")
+    checks = discover_components(Path(__file__).parent / "checks", "check")
+    logger.info(f"Loaded {len(checks)} auto-discovered checks")
 
     # Custom checks (dynamic discovery from custom/)
     custom = _get_custom_checks()
