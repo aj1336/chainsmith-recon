@@ -1,0 +1,7 @@
+# app/agents/triage/config.yaml — tunables only (Phase 56 §5)
+#
+# Only `enabled` is meaningful for an agent today. The triage knobs
+# (context_file, kb_path) still live in ChainsmithConfig.triage and migrate
+# here in 56.10c; LLM model routing stays central in ChainsmithConfig.litellm.
+
+enabled: true

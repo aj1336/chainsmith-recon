@@ -279,13 +279,12 @@ class ChatDispatcher:
         self._guided_welcome_sent = False
 
     def _get_coach(self):
-        """Lazy-init the Coach agent."""
+        """Lazy-init the Coach agent (via the folder-shape factory)."""
         if self._coach is None:
-            from app.agents.coach import CoachAgent
+            from app.agents.registry import get_agent_registry
             from app.lib.llm import get_llm_client
 
-            client = get_llm_client()
-            self._coach = CoachAgent(client=client)
+            self._coach = get_agent_registry().create("coach", client=get_llm_client())
         return self._coach
 
     async def handle_operator_message(

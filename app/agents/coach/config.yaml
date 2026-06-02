@@ -1,0 +1,7 @@
+# app/agents/coach/config.yaml — tunables only (Phase 56 §5)
+#
+# Only `enabled` is meaningful for an agent today. The coach's own knob
+# (memory_cap) still lives in ChainsmithConfig.coach and migrates here in
+# 56.10c; LLM model routing stays central in ChainsmithConfig.litellm.
+
+enabled: true

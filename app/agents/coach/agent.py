@@ -16,6 +16,7 @@ import logging
 from collections import deque
 from collections.abc import Awaitable, Callable
 
+from app.agents.base import BaseAgent
 from app.lib.llm import LLMClient
 from app.models import (
     AgentEvent,
@@ -71,7 +72,7 @@ CONSTRAINTS:
 - Never fabricate finding IDs, CVE numbers, or data not in your context."""
 
 
-class CoachAgent:
+class CoachAgent(BaseAgent):
     """Conversational explainer agent — no tools, LLM-powered.
 
     Maintains session-scoped memory (capped deque of prior exchanges)

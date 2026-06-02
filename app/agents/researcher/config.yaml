@@ -1,0 +1,8 @@
+# app/agents/researcher/config.yaml — tunables only (Phase 56 §5)
+#
+# Only `enabled` is meaningful for an agent today. The researcher's own knob
+# (offline_mode) still lives in ChainsmithConfig.researcher and migrates here
+# in 56.10c; LLM model routing stays central in ChainsmithConfig.litellm.
+# Until then, offline_mode can be injected per-call via the factory.
+
+enabled: true

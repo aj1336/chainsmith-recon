@@ -1,0 +1,26 @@
+# app/agents/researcher/contract.yaml — identity + interface (Phase 56 §4.1)
+
+id: 2514ba77-f230-423a-a292-94ae06bf1da0
+name: researcher
+type: agent
+description: "Enriches verified observations with external context — CVE details, public exploits, vendor advisories, and version vulnerabilities."
+entry: agent.py:ResearcherAgent
+
+role: researcher
+triggers:
+  - research.requested
+# Declarative tool surface (mirrors RESEARCHER_TOOLS in agent.py).
+tools:
+  - lookup_cve
+  - lookup_exploit_db
+  - fetch_vendor_advisory
+  - enrich_version_info
+  - submit_enrichment
+prompts: {}
+
+outputs:
+  enrichments: [ResearchEnrichment]
+side_effects: [network]
+references:
+  - docs/pipeline.md
+reason: ""

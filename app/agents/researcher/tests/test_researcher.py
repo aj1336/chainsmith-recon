@@ -1,7 +1,8 @@
 """
-Tests for Researcher Agent
+Co-located tests for the Researcher agent component (Phase 56 folder shape).
 
 Covers:
+- Folder-shape discovery + factory construction (discover_agent_specs → create)
 - ResearcherAgent instantiation
 - Enrichment of observations with mocked LLM
 - Empty observations handling
@@ -19,8 +20,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.agents.researcher import (
-    ResearcherAgent,
+from app.agents.base import BaseAgent
+from app.agents.registry import discover_agent_specs
+from app.agents.researcher import ResearcherAgent
+from app.agents.researcher.agent import (
     _enrich_version_info,
     _fetch_vendor_advisory,
     _lookup_cve,
@@ -74,6 +77,44 @@ def _make_observation(
         discovered_at=datetime(2026, 1, 1, tzinfo=UTC),
         evidence_summary=evidence,
     )
+
+
+# ─── Folder-shape discovery + factory (Phase 56.10) ──────────────
+
+
+class TestDiscoveryAndFactory:
+    def test_researcher_is_discovered(self):
+        registry = discover_agent_specs()
+        assert "researcher" in registry.names()
+
+    def test_factory_builds_and_injects_client(self):
+        client = _make_client()
+        agent = discover_agent_specs().create("researcher", client=client)
+
+        assert isinstance(agent, ResearcherAgent)
+        assert isinstance(agent, BaseAgent)
+        assert agent.client is client
+        # identity stamped from the contract
+        assert agent.name == "researcher"
+        assert agent.component_type == "agent"
+        assert agent.role == "researcher"
+        assert agent.id  # UUID from contract.yaml
+        # default ctor knob preserved through the factory
+        assert agent.offline_mode is False
+
+    def test_factory_forwards_offline_mode_knob(self):
+        """offline_mode passed to create() is forwarded to __init__ via from_spec."""
+        agent = discover_agent_specs().create(
+            "researcher", client=_make_client(), offline_mode=True
+        )
+        assert agent.offline_mode is True
+
+    def test_factory_injects_per_session_callback(self):
+        callback = AsyncMock()
+        agent = discover_agent_specs().create(
+            "researcher", client=_make_client(), event_callback=callback
+        )
+        assert agent.event_callback is callback
 
 
 # ─── Instantiation ───────────────────────────────────────────────

@@ -1,0 +1,20 @@
+# app/agents/coach/contract.yaml — identity + interface (Phase 56 §4.1)
+
+id: eee801d8-afe8-411f-b0d3-b78110e5d92d
+name: coach
+type: agent
+description: "Always-available conversational agent that explains findings, chains, and security concepts grounded in session context."
+entry: agent.py:CoachAgent
+
+role: coach
+# Coach is operator-invoked through the chat router, not fired by a pipeline
+# event — hence no triggers.
+triggers: []
+tools: []
+prompts: {}
+
+outputs: {}
+side_effects: [network]
+references:
+  - docs/future-ideas/completed/phase28-agent-documentation.md
+reason: ""

@@ -52,15 +52,20 @@ class BaseAgent(BaseComponent):
         *,
         client: LLMClient,
         event_callback: Callable[[AgentEvent], Awaitable[None]] | None = None,
+        **ctor_knobs,
     ) -> BaseAgent:
         """Build an agent instance from its discovered spec + injected runtime deps.
 
         `client` and `event_callback` are runtime (per request/session) and come
         from the caller; identity and the `enabled` baseline come from the
-        contract/config. Agent-specific config knobs (context_file, memory_cap,
-        …) are applied here as they migrate into `config.yaml` in 56.10c.
+        contract/config. Any extra keyword (`**ctor_knobs`) is forwarded to the
+        subclass `__init__` — this is how per-agent construction knobs that do
+        not yet live in `config.yaml` reach the constructor (e.g. the coach's
+        `memory_cap`, the researcher's `offline_mode`). They migrate into
+        `config.yaml` and are resolved here in 56.10c; until then a caller may
+        pass them through `AgentRegistry.create(...)`.
         """
-        instance = cls(client=client, event_callback=event_callback)
+        instance = cls(client=client, event_callback=event_callback, **ctor_knobs)
         instance.id = str(contract.id)
         instance.name = contract.name
         instance.component_type = "agent"

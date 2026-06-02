@@ -1,7 +1,8 @@
 """
-Tests for Coach Agent
+Co-located tests for the Coach agent component (Phase 56 folder shape).
 
 Covers:
+- Folder-shape discovery + factory construction (discover_agent_specs → create)
 - CoachAgent instantiation
 - Successful question answering with mocked LLM
 - LLM unavailable returns friendly message
@@ -16,7 +17,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from app.agents.base import BaseAgent
 from app.agents.coach import CoachAgent
+from app.agents.registry import discover_agent_specs
 from app.lib.llm import LLMResponse
 from app.models import (
     AttackChain,
@@ -77,6 +80,42 @@ def _make_chain(chain_id: str = "C-001") -> AttackChain:
         individual_severities=[ObservationSeverity.HIGH],
         severity_reasoning="Multiple high-severity findings chain together",
     )
+
+
+# ─── Folder-shape discovery + factory (Phase 56.10) ──────────────
+
+
+class TestDiscoveryAndFactory:
+    def test_coach_is_discovered(self):
+        registry = discover_agent_specs()
+        assert "coach" in registry.names()
+
+    def test_factory_builds_and_injects_client(self):
+        client = _make_client()
+        agent = discover_agent_specs().create("coach", client=client)
+
+        assert isinstance(agent, CoachAgent)
+        assert isinstance(agent, BaseAgent)
+        assert agent.client is client
+        # identity stamped from the contract
+        assert agent.name == "coach"
+        assert agent.component_type == "agent"
+        assert agent.role == "coach"
+        assert agent.id  # UUID from contract.yaml
+        # default ctor knob preserved through the factory
+        assert agent.memory_cap == 10
+
+    def test_factory_forwards_ctor_knob(self):
+        """memory_cap passed to create() is forwarded to __init__ via from_spec."""
+        agent = discover_agent_specs().create("coach", client=_make_client(), memory_cap=4)
+        assert agent.memory_cap == 4
+
+    def test_factory_injects_per_session_callback(self):
+        callback = AsyncMock()
+        agent = discover_agent_specs().create(
+            "coach", client=_make_client(), event_callback=callback
+        )
+        assert agent.event_callback is callback
 
 
 # ─── Instantiation ───────────────────────────────────────────────

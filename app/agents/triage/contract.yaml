@@ -1,0 +1,20 @@
+# app/agents/triage/contract.yaml — identity + interface (Phase 56 §4.1)
+
+id: 760eea70-9377-4767-a1b0-2f8e56e61752
+name: triage
+type: agent
+description: "Produces a prioritized remediation action plan from verified observations, adjudicated risk, and attack chains."
+entry: agent.py:TriageAgent
+
+role: triage
+triggers:
+  - adjudication.complete
+tools: []
+prompts: {}
+
+outputs:
+  triage_plan: [TriagePlan]
+side_effects: [network]
+references:
+  - docs/future-ideas/completed/phase33-triage-agent.md
+reason: ""

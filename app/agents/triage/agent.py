@@ -16,6 +16,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
+from app.agents.base import BaseAgent
 from app.lib.llm import LLMClient, LLMResponse
 from app.models import (
     ActionFeasibility,
@@ -157,7 +158,7 @@ If team_size is "solo" or not provided, set workstreams to null.
 # ─── Agent ─────────────────────────────────────────────────────
 
 
-class TriageAgent:
+class TriageAgent(BaseAgent):
     """Produces prioritized remediation plans from pipeline output."""
 
     def __init__(

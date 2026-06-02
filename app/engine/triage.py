@@ -10,7 +10,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from app.agents.triage import TriageAgent, _match_kb_entries, load_remediation_kb
+from app.agents.registry import get_agent_registry
+from app.agents.triage.agent import _match_kb_entries, load_remediation_kb
 from app.config import get_config
 from app.lib.llm import get_llm_client
 from app.lib.timeutils import iso_utc, parse_iso_utc
@@ -311,8 +312,8 @@ async def run_triage(session: "ScanSession") -> None:
         kb = load_remediation_kb(cfg.triage.kb_path)
         kb_entries = _match_kb_entries(verified, kb)
 
-        # 6. Create agent and run
-        agent = TriageAgent(client=get_llm_client())
+        # 6. Create agent (via the folder-shape factory) and run
+        agent = get_agent_registry().create("triage", client=get_llm_client())
         plan = await agent.triage(
             observations=verified,
             chains=chains,

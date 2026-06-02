@@ -1,16 +1,20 @@
 """
-Tests for Triage Agent
+Co-located tests for the Triage agent component (Phase 56 folder shape).
 
 Covers:
+- Folder-shape discovery + factory construction (discover_agent_specs → create)
 - TriageAgent instantiation
 - Single LLM call triage with mocked responses
-- Team context load/save (valid, missing, malformed)
 - Remediation KB loading and matching
 - Event emission (start, complete, action)
 - TriagePlan / TriageAction model validation
 - Edge cases (no observations, LLM unavailable, malformed JSON, stop)
 - Feasibility classification based on team context
 - Workstream generation for multi-person teams
+- JSON cleaning
+
+The team-context *file load/save* tests live in tests/core/test_team_context.py
+(they exercise app.engine.triage.load_team_context/save_team_context, not the agent).
 """
 
 import json
@@ -19,8 +23,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.agents.triage import TriageAgent, _clean_json, _match_kb_entries, load_remediation_kb
-from app.engine.triage import load_team_context, save_team_context
+from app.agents.base import BaseAgent
+from app.agents.registry import discover_agent_specs
+from app.agents.triage import TriageAgent
+from app.agents.triage.agent import _clean_json, _match_kb_entries, load_remediation_kb
 from app.lib.llm import LLMErrorType, LLMResponse
 from app.models import (
     ActionFeasibility,
@@ -153,6 +159,36 @@ def _triage_response() -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Folder-shape discovery + factory (Phase 56.10)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestDiscoveryAndFactory:
+    def test_triage_is_discovered(self):
+        registry = discover_agent_specs()
+        assert "triage" in registry.names()
+
+    def test_factory_builds_and_injects_client(self):
+        client = MagicMock()
+        agent = discover_agent_specs().create("triage", client=client)
+
+        assert isinstance(agent, TriageAgent)
+        assert isinstance(agent, BaseAgent)
+        assert agent.client is client
+        # identity stamped from the contract
+        assert agent.name == "triage"
+        assert agent.component_type == "agent"
+        assert agent.role == "triage"
+        assert agent.id  # UUID from contract.yaml
+        assert agent.is_running is False
+
+    def test_factory_injects_per_session_callback(self):
+        callback = AsyncMock()
+        agent = discover_agent_specs().create("triage", client=MagicMock(), event_callback=callback)
+        assert agent.event_callback is callback
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Model tests
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -219,95 +255,6 @@ class TestTriageModels:
         )
         assert len(plan.actions) == 1
         assert plan.quick_wins == 1
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Team context load/save tests
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
-class TestTeamContextLoadSave:
-    """Test team context YAML loading and saving."""
-
-    def test_load_missing_file(self, tmp_path):
-        """Returns None when file doesn't exist."""
-        cfg = MagicMock()
-        cfg.triage.context_file = str(tmp_path / "nonexistent.yaml")
-        result = load_team_context(cfg)
-        assert result is None
-
-    def test_load_valid_file(self, tmp_path):
-        """Loads valid YAML correctly."""
-        yaml_content = (
-            "deployment_velocity: yes\n"
-            "incident_response: partially\n"
-            "remediation_surface: app_only\n"
-            "team_size: 2_to_3\n"
-            'off_limits: "Auth service"\n'
-            'answered_at: "2026-04-09T14:30:00Z"\n'
-        )
-        yaml_file = tmp_path / "triage_context.yaml"
-        yaml_file.write_text(yaml_content)
-
-        cfg = MagicMock()
-        cfg.triage.context_file = str(yaml_file)
-        result = load_team_context(cfg)
-
-        assert result is not None
-        assert result.deployment_velocity == "yes"
-        assert result.incident_response == "partially"
-        assert result.remediation_surface == "app_only"
-        assert result.team_size == "2_to_3"
-        assert result.off_limits == "Auth service"
-        assert result.answered_at is not None
-
-    def test_load_partial_file(self, tmp_path):
-        """Loads partial YAML — missing fields are None."""
-        yaml_content = "deployment_velocity: no\n"
-        yaml_file = tmp_path / "triage_context.yaml"
-        yaml_file.write_text(yaml_content)
-
-        cfg = MagicMock()
-        cfg.triage.context_file = str(yaml_file)
-        result = load_team_context(cfg)
-
-        assert result is not None
-        assert result.deployment_velocity == "no"
-        assert result.incident_response is None
-
-    def test_load_malformed_file(self, tmp_path):
-        """Returns None for non-mapping YAML."""
-        yaml_file = tmp_path / "triage_context.yaml"
-        yaml_file.write_text("- just\n- a\n- list\n")
-
-        cfg = MagicMock()
-        cfg.triage.context_file = str(yaml_file)
-        result = load_team_context(cfg)
-        assert result is None
-
-    def test_save_and_reload(self, tmp_path):
-        """Round-trip: save then load."""
-        ctx = TeamContext(
-            deployment_velocity="with_approval",
-            incident_response="yes",
-            remediation_surface="both",
-            team_size="4_plus",
-            off_limits="Production DB",
-            answered_at=datetime(2026, 4, 9, 14, 30, tzinfo=UTC),
-        )
-
-        yaml_file = tmp_path / "triage_context.yaml"
-        cfg = MagicMock()
-        cfg.triage.context_file = str(yaml_file)
-
-        assert save_team_context(ctx, cfg) is True
-        assert yaml_file.exists()
-
-        loaded = load_team_context(cfg)
-        assert loaded is not None
-        assert loaded.deployment_velocity == "with_approval"
-        assert loaded.team_size == "4_plus"
-        assert loaded.off_limits == "Production DB"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

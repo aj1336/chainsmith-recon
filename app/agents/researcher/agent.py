@@ -13,6 +13,7 @@ import json
 import logging
 from collections.abc import Awaitable, Callable
 
+from app.agents.base import BaseAgent
 from app.lib.llm import LLMClient
 from app.models import (
     AdvisoryInfo,
@@ -322,7 +323,7 @@ async def _enrich_version_info(product: str, version: str, offline: bool = False
 # ─── Agent ──────────────────────────────────────────────────────
 
 
-class ResearcherAgent:
+class ResearcherAgent(BaseAgent):
     """Enriches observations with external vulnerability context.
 
     Uses LLM reasoning to decide which lookups are most valuable and
