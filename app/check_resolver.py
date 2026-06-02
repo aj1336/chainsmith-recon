@@ -235,129 +235,23 @@ def filter_by_suites(checks: list, suites: list[str]) -> list:
     return filtered
 
 
-# MCP check names after the Phase 56.5 `mcp_` prefix strip. Matched exactly (not by
-# substring) because several collide with AI/agent substrings — see infer_suite().
-_MCP_CHECK_NAMES = frozenset(
-    {
-        "auth_check",
-        "discovery",
-        "notification_injection",
-        "prompt_injection",
-        "protocol_version",
-        "resource_traversal",
-        "sampling_abuse",
-        "schema_leakage",
-        "server_fingerprint",
-        "shadow_tool_detection",
-        "template_injection",
-        "tool_chain_analysis",
-        "tool_enumeration",
-        "tool_invocation",
-        "tool_rate_limit",
-        "transport_security",
-        "undeclared_capabilities",
-        "websocket_transport",
-    }
-)
-
-
-# The seven check suites. Used by infer_suite's prefix-first check (§14.4).
+# The seven check suites. Used by infer_suite's prefix split (§14.4).
 _SUITE_NAMES = frozenset({"web", "network", "ai", "mcp", "agent", "rag", "cag"})
 
 
 def infer_suite(check_name: str) -> str:
-    """Infer the suite name from a check name."""
-    name_lower = check_name.lower()
-    # 56.7 (§14.4): uniform `<suite>_<name>` naming makes suite a pure prefix.
-    # Check it FIRST so already-prefixed names route exactly; bare names (not yet
-    # renamed this sweep) fall through to the legacy substring/_MCP_CHECK_NAMES
-    # logic below. Safe because suite words only ever appear as deliberate
-    # prefixes — no bare check name's first `_`-token is a suite word. When all
-    # four remaining suites carry prefixes, the fallback (and _MCP_CHECK_NAMES)
-    # can be deleted and this becomes the whole function.
-    prefix = name_lower.split("_", 1)[0]
-    if prefix in _SUITE_NAMES:
-        return prefix
-    # MCP checks (Phase 56.5) had their redundant `mcp_` prefix stripped, so they
-    # can no longer be matched by an "mcp" substring — and several now collide with
-    # AI/agent substrings (discovery→agent_discovery, prompt_injection→
-    # system_prompt_injection, server_fingerprint→"fingerprint", tool_rate_limit→
-    # "rate_limit"). Match the exact MCP name set first so the substring patterns
-    # below never mis-grab them (and vice-versa).
-    if name_lower in _MCP_CHECK_NAMES:
-        return "mcp"
-    suite_patterns = {
-        # Legacy fallback: observations/data persisted with the pre-56.5 `mcp_`
-        # prefix (e.g. simulations) still route to mcp. New stripped names are
-        # handled by the exact-set check above before reaching here.
-        "mcp": ["mcp"],
-        "agent": ["agent"],
-        "rag": ["rag"],
-        "cag": ["cag"],
-        "network": [
-            "dns",
-            "wildcard_dns",
-            "geoip",
-            "reverse_dns",
-            "port_scan",
-            "tls_analysis",
-            "service_probe",
-            "http_method_enum",
-            "banner_grab",
-            "whois_lookup",
-            "traceroute",
-            "ipv6_discovery",
-        ],
-        "web": [
-            "header",
-            "robots",
-            "path",
-            "openapi",
-            "cors",
-            "webdav",
-            "vcs_exposure",
-            "config_exposure",
-            "directory_listing",
-            "default_creds",
-            "debug_endpoints",
-            "cookie_security",
-            "auth_detection",
-            "waf_detection",
-            "sitemap",
-            "redirect_chain",
-            "error_page",
-            "ssrf_indicator",
-            "favicon",
-            "http2_detection",
-            "hsts_preload",
-            "sri",
-            "mass_assignment",
-        ],
-        "ai": [
-            "llm",
-            "embedding",
-            "model_info",
-            "fingerprint",
-            "error",
-            "tool_discovery",
-            "prompt",
-            "rate_limit",
-            "filter",
-            "context",
-            "jailbreak",
-            "multi_turn",
-            "input_format",
-            "model_enum",
-            "token_cost",
-            "system_prompt_injection",
-            "output_format",
-            "api_parameter",
-        ],
-    }
-    for suite, patterns in suite_patterns.items():
-        if any(p in name_lower for p in patterns):
-            return suite
-    return "other"
+    """Infer the suite from a check's ``<suite>_<name>`` prefix (§14.4).
+
+    Phase 56.7 made every check name uniformly suite-prefixed, so the suite is
+    simply the first ``_``-delimited token validated against the known suites.
+    A name without a known prefix routes to ``"other"``.
+
+    (This replaced the pre-56.7 substring map + the ``_MCP_CHECK_NAMES`` exact-set
+    hack, both of which existed only to disambiguate the stripped MCP names and
+    the bare legacy names — dead once all suites carry prefixes.)
+    """
+    prefix = check_name.lower().split("_", 1)[0]
+    return prefix if prefix in _SUITE_NAMES else "other"
 
 
 def get_check_by_name(name: str):
