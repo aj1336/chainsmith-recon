@@ -110,6 +110,16 @@ def _required_arg_names(func: ast.FunctionDef) -> list[str]:
     return required
 
 
+# Required constructor params that are legitimately *injected* by a component
+# type's factory, so they don't violate the no-arg rule (§6). Checks are built
+# no-arg by discover_components; agents are built per request/session by
+# app/agents/registry.py with an injected LLMClient (56.10), so `client` is
+# allowed to be a required positional there.
+_INJECTED_REQUIRED: dict[str, set[str]] = {
+    "agent": {"client"},
+}
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # verify_contracts — passes 1-3 (no imports)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -197,7 +207,7 @@ def verify_contracts(root: Path, component_type: ComponentType = "check") -> lis
                     )
                 )
         if model is not None:
-            violations.extend(_verify_entry_constructible(comp_dir, model.entry))
+            violations.extend(_verify_entry_constructible(comp_dir, model.entry, component_type))
 
     # ── Pass 3 (cont.): test-placement guard (§10 risk 2) ──
     for test_file in sorted(root.rglob("test_*.py")):
@@ -214,8 +224,12 @@ def verify_contracts(root: Path, component_type: ComponentType = "check") -> lis
     return violations
 
 
-def _verify_entry_constructible(comp_dir: Path, entry: str) -> list[Violation]:
-    """AST-assert the entry class exists and is no-arg constructible (§6/§8.6)."""
+def _verify_entry_constructible(
+    comp_dir: Path, entry: str, component_type: ComponentType = "check"
+) -> list[Violation]:
+    """AST-assert the entry class exists and its `__init__` requires only params
+    the type's factory injects (§6/§8.6). Checks must be no-arg; agents may
+    require the injected `client` (see `_INJECTED_REQUIRED`)."""
     violations: list[Violation] = []
     filename, class_name = parse_entry(entry)
     if not filename or not class_name:
@@ -232,15 +246,17 @@ def _verify_entry_constructible(comp_dir: Path, entry: str) -> list[Violation]:
         return [
             Violation(comp_dir, "entry-class-missing", f"class '{class_name}' not in {filename}")
         ]
+    injected = _INJECTED_REQUIRED.get(component_type, set())
     for node in class_def.body:
         if isinstance(node, ast.FunctionDef) and node.name == "__init__":
-            required = _required_arg_names(node)
-            if required:
+            unexpected = [r for r in _required_arg_names(node) if r not in injected]
+            if unexpected:
                 violations.append(
                     Violation(
                         comp_dir,
-                        "entry-not-no-arg",
-                        f"{class_name}.__init__ requires {required}; must be no-arg constructible",
+                        "entry-not-constructible",
+                        f"{class_name}.__init__ requires {unexpected}; "
+                        f"must be constructible with only injected params {sorted(injected) or '[]'}",
                     )
                 )
             break

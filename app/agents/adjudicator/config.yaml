@@ -1,0 +1,7 @@
+# app/agents/adjudicator/config.yaml — tunables only (Phase 56 §5)
+#
+# Only `enabled` is meaningful for an agent today. The adjudicator's own knobs
+# (context_file) still live in ChainsmithConfig.adjudicator and migrate here in
+# 56.10c; LLM model routing stays central in ChainsmithConfig.litellm.
+
+enabled: true

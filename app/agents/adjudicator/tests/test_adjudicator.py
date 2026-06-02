@@ -1,15 +1,18 @@
 """
-Tests for Adjudicator Agent
+Co-located tests for the Adjudicator agent component (Phase 56 folder shape).
 
 Covers:
+- Folder-shape discovery + factory construction (discover_agent_specs → create)
 - AdjudicatorAgent instantiation
 - Evidence rubric scoring with mocked LLM responses
 - Operator context matching (exact, wildcard, defaults, missing)
-- Operator context file loading (valid, missing, malformed)
 - Event emission (start, complete, upheld, adjusted)
 - AdjudicatedRisk model validation
 - Edge cases (no verified observations, LLM unavailable, malformed JSON, stop)
 - JSON cleaning
+
+The operator-context *file loading* tests live in tests/core/test_operator_context.py
+(they exercise app.engine.adjudication.load_operator_context, not the agent).
 """
 
 import json
@@ -19,7 +22,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.agents.adjudicator import AdjudicatorAgent
-from app.engine.adjudication import load_operator_context
+from app.agents.base import BaseAgent
+from app.agents.registry import discover_agent_specs
 from app.lib.llm import LLMErrorType, LLMResponse
 from app.models import (
     AdjudicatedRisk,
@@ -120,6 +124,41 @@ def sample_operator_context():
         ],
         defaults={"exposure": "unknown", "criticality": "medium"},
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Folder-shape discovery + factory (Phase 56.10)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestDiscoveryAndFactory:
+    def test_adjudicator_is_discovered(self):
+        registry = discover_agent_specs()
+        assert "adjudicator" in registry.names()
+
+    def test_factory_builds_and_injects_client(self, mock_llm_client):
+        registry = discover_agent_specs()
+        agent = registry.create("adjudicator", client=mock_llm_client)
+
+        assert isinstance(agent, AdjudicatorAgent)
+        assert isinstance(agent, BaseAgent)
+        assert agent.client is mock_llm_client
+        # identity stamped from the contract
+        assert agent.name == "adjudicator"
+        assert agent.component_type == "agent"
+        assert agent.role == "adjudicator"
+        assert agent.id  # UUID from contract.yaml
+
+    def test_factory_injects_per_session_callback(self, mock_llm_client):
+        callback = AsyncMock()
+        agent = discover_agent_specs().create(
+            "adjudicator", client=mock_llm_client, event_callback=callback
+        )
+        assert agent.event_callback is callback
+
+    def test_unknown_agent_raises(self, mock_llm_client):
+        with pytest.raises(KeyError):
+            discover_agent_specs().create("nope", client=mock_llm_client)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -233,40 +272,6 @@ class TestOperatorContext:
         agent = AdjudicatorAgent(client=mock_llm_client)
         observation = _make_observation()
         assert agent._match_asset_context(observation, None) is None
-
-
-class TestOperatorContextLoading:
-    def _make_config(self, context_file="/nonexistent/path.yaml"):
-        cfg = MagicMock()
-        cfg.adjudicator.context_file = context_file
-        return cfg
-
-    def test_missing_file_returns_none(self):
-        result = load_operator_context(config=self._make_config("/nonexistent/path.yaml"))
-        assert result is None
-
-    def test_malformed_yaml_returns_none(self, tmp_path):
-        ctx_file = tmp_path / "context.yaml"
-        ctx_file.write_text("just a plain string")
-        result = load_operator_context(config=self._make_config(str(ctx_file)))
-        assert result is None
-
-    def test_valid_file_loads(self, tmp_path):
-        ctx_file = tmp_path / "context.yaml"
-        ctx_file.write_text(
-            "assets:\n"
-            "  - domain: api.example.com\n"
-            "    exposure: internet-facing\n"
-            "    criticality: high\n"
-            "defaults:\n"
-            "  exposure: unknown\n"
-            "  criticality: medium\n"
-        )
-
-        result = load_operator_context(config=self._make_config(str(ctx_file)))
-        assert result is not None
-        assert len(result.assets) == 1
-        assert result.assets[0].domain == "api.example.com"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

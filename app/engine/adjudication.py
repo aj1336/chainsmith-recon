@@ -10,7 +10,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from app.agents.adjudicator import AdjudicatorAgent
+from app.agents.registry import get_agent_registry
 from app.config import get_config
 from app.lib.llm import get_llm_client
 from app.models import OperatorContext
@@ -159,8 +159,8 @@ async def run_adjudication(
         # Load operator context
         operator_context = load_operator_context()
 
-        # Create agent and run
-        agent = AdjudicatorAgent(client=get_llm_client())
+        # Create agent (via the folder-shape factory) and run
+        agent = get_agent_registry().create("adjudicator", client=get_llm_client())
         results = await agent.adjudicate_observations(verified, operator_context)
 
         result_dicts = [r.model_dump(mode="json") for r in results]

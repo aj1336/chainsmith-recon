@@ -1,0 +1,20 @@
+# app/agents/adjudicator/contract.yaml — identity + interface (Phase 56 §4.1)
+
+id: d764d0ab-a8d1-46a3-982e-9099b4c2c476
+name: adjudicator
+type: agent
+description: "Challenges severity ratings of verified observations using a structured evidence rubric."
+entry: agent.py:AdjudicatorAgent
+
+role: adjudicator
+triggers:
+  - observation.verified
+tools: []
+prompts: {}
+
+outputs:
+  adjudications: [AdjudicatedRisk]
+side_effects: [network]
+references:
+  - docs/future-ideas/completed/phase21-adjudicator-agent.md
+reason: ""

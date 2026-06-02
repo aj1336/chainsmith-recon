@@ -90,10 +90,10 @@ minversion = "8.0"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 # Co-located component tests live under app/checks/<suite>/<check>/tests/ (Phase 56
-# §10 risk 2). Sanction the check root explicitly (not a blanket "app", which would
-# let pytest wander into non-component code). app/agents | app/advisors | app/gates
-# get added as 56.10-56.12 land.
-testpaths = ["tests", "app/checks"]
+# §10 risk 2). Sanction the component roots explicitly (not a blanket "app", which
+# would let pytest wander into non-component code). app/agents added with 56.10;
+# app/advisors | app/gates get added as 56.11-56.12 land.
+testpaths = ["tests", "app/checks", "app/agents"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = [

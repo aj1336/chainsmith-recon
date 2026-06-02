@@ -14,6 +14,7 @@ import json
 import logging
 from collections.abc import Awaitable, Callable
 
+from app.agents.base import BaseAgent
 from app.lib.llm import LLMClient, LLMResponse
 from app.models import (
     AdjudicatedRisk,
@@ -69,7 +70,7 @@ Output your scores as valid JSON only, no markdown fences:
 # ─── Agent ──────────────────────────────────────────────────────
 
 
-class AdjudicatorAgent:
+class AdjudicatorAgent(BaseAgent):
     """
     Challenges and debates severity ratings of verified observations.
 

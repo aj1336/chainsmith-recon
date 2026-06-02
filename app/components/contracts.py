@@ -80,11 +80,47 @@ class CheckContract(BaseModel):
     reason: str = ""
 
 
-# Registry of contract models by component type. Only `check` is concrete this
-# phase; agent/advisor/gate models are added here as 56.10-56.12 land, at which
+class AgentContract(BaseModel):
+    """Identity + interface contract for an `agent` component (§4.1, 56.10).
+
+    Agents diverge from checks: no `suite`/`depends_on`/`produces` execution
+    wiring. Instead they declare a `role`, the `triggers` that invoke them, the
+    `tools` they may call, and the `prompts` they ship. They are also
+    constructed differently — per request/session with an injected `LLMClient`
+    and an optional per-session `event_callback` — so they are loaded via
+    `app/agents/registry.py` (`discover_agent_specs` → factory), not the no-arg
+    `discover_components` path. The folder name must equal `name` (enforced by
+    `verify_contracts`).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # ─── identity ───────────────────────────────────────────────
+    id: UUID4  # assigned once at authorship
+    name: str  # slug; must match folder name
+    type: Literal["agent"] = "agent"
+    description: str
+    entry: str  # "agent.py:ClassName"
+
+    # ─── agent interface ────────────────────────────────────────
+    role: str = ""  # adjudicator | coach | triage | researcher
+    triggers: list[str] = Field(default_factory=list)  # e.g. ["observation.verified"]
+    tools: list[str] = Field(default_factory=list)  # declared tool surface
+    prompts: dict[str, str] = Field(default_factory=dict)  # role -> path (system, user)
+
+    # ─── I/O + metadata ─────────────────────────────────────────
+    outputs: dict[str, Any] = Field(default_factory=dict)
+    side_effects: list[SideEffect] = Field(default_factory=lambda: ["none"])
+    references: list[str] = Field(default_factory=list)
+    reason: str = ""
+
+
+# Registry of contract models by component type. `check` and `agent` are
+# concrete; advisor/gate models are added here as 56.11-56.12 land, at which
 # point this becomes the discriminated union described in §4.1.
 CONTRACT_MODELS: dict[str, type[BaseModel]] = {
     "check": CheckContract,
+    "agent": AgentContract,
 }
 
 
