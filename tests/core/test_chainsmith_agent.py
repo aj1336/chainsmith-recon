@@ -211,9 +211,11 @@ class TestChainsmithScaffold:
                 suite="web",
             )
 
-        assert result["class_name"] == "MyCustomCheckCheck"
-        assert result["code"] is not None
-        assert "BaseCheck" in result["code"]
+        # Custom checks are uniformly `custom_<name>` under the `custom` suite (C9).
+        assert result["check_name"] == "custom_my_custom_check"
+        assert result["class_name"] == "CustomMyCustomCheckCheck"
+        assert set(result["files"]) == {"contract.yaml", "check.py", "config.yaml", "__init__.py"}
+        assert "BaseCheck" in result["files"]["check.py"]
         assert result["registered"] is False
 
     @patch("app.agents.chainsmith.get_llm_client")
@@ -231,6 +233,102 @@ class TestChainsmithScaffold:
 
         assert result.get("error") is not None
         assert "already exists" in result["error"]
+
+    @patch("app.agents.chainsmith.get_llm_client")
+    @pytest.mark.asyncio
+    async def test_scaffold_name_normalization(self, mock_llm):
+        """Spaces/dashes collapse to a single-underscore `custom_` slug (no `__`)."""
+        mock_llm.return_value = AsyncMock()
+        agent = ChainsmithAgent()
+
+        with patch("os.path.exists", return_value=False):
+            result = await agent.scaffold_check(
+                name="JWT Audit - v2",
+                description="d",
+                suite="ai",
+            )
+
+        assert result["check_name"] == "custom_jwt_audit_v2"
+        assert "__" not in result["check_name"]
+        assert result["class_name"] == "CustomJwtAuditV2Check"
+
+    @patch("app.agents.chainsmith.get_llm_client")
+    @pytest.mark.asyncio
+    async def test_scaffold_contract_is_well_formed(self, mock_llm):
+        """The generated contract.yaml parses as a CheckContract (suite=custom)."""
+        import yaml
+
+        from app.components.contracts import CheckContract
+
+        mock_llm.return_value = AsyncMock()
+        agent = ChainsmithAgent()
+
+        with patch("os.path.exists", return_value=False):
+            result = await agent.scaffold_check(
+                name="jwt audit",
+                description="Audit JWT handling",
+                suite="web",
+                conditions=[{"output_name": "services", "operator": "truthy"}],
+                produces=["jwt_findings"],
+            )
+
+        contract = CheckContract(**yaml.safe_load(result["files"]["contract.yaml"]))
+        assert contract.name == "custom_jwt_audit"
+        assert contract.suite == "custom"
+        assert contract.entry == "check.py:CustomJwtAuditCheck"
+        assert contract.produces == ["jwt_findings"]
+        assert "class CustomJwtAuditCheck(BaseCheck)" in result["files"]["check.py"]
+
+    @patch("app.agents.chainsmith.get_llm_client")
+    @pytest.mark.asyncio
+    async def test_write_check_creates_discoverable_folder(self, mock_llm, tmp_path):
+        """write_check drops a folder that passes the canonical verify_contracts gate."""
+        from app.component_loader import verify_contracts
+
+        mock_llm.return_value = AsyncMock()
+        agent = ChainsmithAgent()
+
+        with patch("app.agents.chainsmith.CUSTOM_DIR", str(tmp_path)):
+            result = await agent.write_check(
+                name="jwt audit",
+                description="Audit JWT handling",
+                suite="web",
+                conditions=[{"output_name": "services", "operator": "truthy"}],
+                produces=["jwt_findings"],
+            )
+
+            assert result["registered"] is True
+            assert result["check_name"] == "custom_jwt_audit"
+            folder = tmp_path / "custom_jwt_audit"
+            for fname in ("contract.yaml", "check.py", "config.yaml", "__init__.py"):
+                assert (folder / fname).exists()
+            # No registry edit, and the folder is a valid, discoverable component.
+            assert verify_contracts(tmp_path, "check") == []
+
+    @patch("app.agents.chainsmith.get_llm_client")
+    @pytest.mark.asyncio
+    async def test_validate_custom_health_uses_verify_contracts(self, mock_llm, tmp_path):
+        """A malformed custom folder surfaces as an invalid_custom_check issue."""
+        mock_llm.return_value = AsyncMock()
+        agent = ChainsmithAgent()
+
+        # Folder name deliberately != contract name -> folder-name-mismatch violation.
+        bad = tmp_path / "wrong_folder"
+        bad.mkdir()
+        (bad / "contract.yaml").write_text(
+            "id: 00000000-0000-4000-8000-000000000000\n"
+            "name: custom_mismatch\n"
+            "type: check\n"
+            "description: bad\n"
+            "entry: check.py:CustomMismatchCheck\n"
+            "suite: custom\n",
+            encoding="utf-8",
+        )
+        result = ValidationResult()
+        with patch("app.agents.chainsmith.CUSTOM_DIR", str(tmp_path)):
+            agent._validate_custom_check_health(result)
+
+        assert any(i.category == "invalid_custom_check" for i in result.issues)
 
 
 # ─── Content Analysis ────────────────────────────────────────────

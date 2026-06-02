@@ -18,7 +18,6 @@ Usage:
     )
 """
 
-import importlib
 import logging
 
 logger = logging.getLogger(__name__)
@@ -75,51 +74,18 @@ def get_real_checks() -> list:
     Every check now lives in the folder shape (``contract.yaml`` + ``config.yaml``)
     and is discovered by ``component_loader``; the old hand-maintained import list
     is gone (retired in 56.9 once all seven suites were migrated).
+
+    Custom checks are no longer special: ``app/checks/custom/`` is walked by the
+    same ``discover_components`` call, so a custom check is just a folder-shape
+    component under the ``custom`` suite (C9 — the ``CUSTOM_CHECK_REGISTRY`` tuple
+    list + ``_get_custom_checks`` registry path were removed in 56.10d).
     """
     from pathlib import Path
 
     from app.component_loader import discover_components
 
     checks = discover_components(Path(__file__).parent / "checks", "check")
-    logger.info(f"Loaded {len(checks)} auto-discovered checks")
-
-    # Custom checks (dynamic discovery from custom/)
-    custom = _get_custom_checks()
-    if custom:
-        checks.extend(custom)
-        logger.info(f"Loaded {len(custom)} custom checks")
-
     logger.info(f"Total checks available: {len(checks)}")
-    return checks
-
-
-def _get_custom_checks() -> list:
-    """Discover and load custom checks from app/checks/custom/.
-
-    Reads the CUSTOM_CHECK_REGISTRY from custom/__init__.py,
-    imports each module, instantiates each class, and validates
-    that it extends BaseCheck with well-formed metadata.
-
-    Returns only checks that instantiate successfully.
-    """
-    from app.checks.base import BaseCheck
-    from app.checks.custom import CUSTOM_CHECK_REGISTRY
-
-    checks = []
-    for module_name, class_name in CUSTOM_CHECK_REGISTRY:
-        try:
-            mod = importlib.import_module(f"app.checks.custom.{module_name}")
-            cls = getattr(mod, class_name)
-            if not issubclass(cls, BaseCheck):
-                logger.warning(
-                    f"Custom check {class_name} in {module_name} does not extend BaseCheck — skipped"
-                )
-                continue
-            instance = cls()
-            checks.append(instance)
-            logger.info(f"  Custom check loaded: {instance.name}")
-        except Exception as e:
-            logger.warning(f"Failed to load custom check {module_name}.{class_name}: {e}")
     return checks
 
 
@@ -199,8 +165,9 @@ def filter_by_suites(checks: list, suites: list[str]) -> list:
     return filtered
 
 
-# The seven check suites. Used by infer_suite's prefix split (§14.4).
-_SUITE_NAMES = frozenset({"web", "network", "ai", "mcp", "agent", "rag", "cag"})
+# The seven core check suites plus the in-tree `custom` suite (C9). Used by
+# infer_suite's prefix split (§14.4); custom checks are named `custom_<name>`.
+_SUITE_NAMES = frozenset({"web", "network", "ai", "mcp", "agent", "rag", "cag", "custom"})
 
 
 def infer_suite(check_name: str) -> str:

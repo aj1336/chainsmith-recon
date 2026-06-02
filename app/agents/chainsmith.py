@@ -19,14 +19,17 @@ Persistence: database via ChainsmithRepository.
 """
 
 import hashlib
-import importlib
 import inspect
 import json
 import logging
 import os
+import uuid
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
+from pathlib import Path
+
+import yaml
 
 from app.checks.base import BaseCheck
 from app.config import ATTACK_PATTERNS_PATH
@@ -405,6 +408,22 @@ class ChainsmithAgent:
     # Custom Check Scaffolding
     # ═══════════════════════════════════════════════════════════════
 
+    @staticmethod
+    def _custom_check_name(name: str) -> str:
+        """Normalize an operator-supplied name to a ``custom_<slug>`` check name.
+
+        Custom checks are uniformly suite-prefixed (56.7) under the ``custom``
+        suite, so the slug always starts with ``custom_``. Double underscores
+        are collapsed (forbidden in component names — they are the env delimiter).
+        """
+        slug = name.strip().lower().replace(" ", "_").replace("-", "_")
+        while "__" in slug:
+            slug = slug.replace("__", "_")
+        slug = slug.strip("_")
+        if not slug.startswith("custom_"):
+            slug = f"custom_{slug}"
+        return slug
+
     async def scaffold_check(
         self,
         name: str,
@@ -415,43 +434,130 @@ class ChainsmithAgent:
         service_types: list[str] | None = None,
         intrusive: bool = False,
     ) -> dict:
-        """Generate a custom check scaffold.
+        """Generate a folder-shape custom check scaffold (preview — no disk write).
 
-        Returns {"path": str, "code": str, "registered": bool}.
+        Custom checks are discovered exactly like core checks (C9): the scaffold
+        is a component folder ``app/checks/custom/custom_<name>/`` carrying a
+        ``contract.yaml`` (name ``custom_<name>``, suite ``custom``), ``check.py``,
+        ``config.yaml`` and a re-export ``__init__.py``. There is no registry and
+        no registration step — ``write_check`` drops the folder and the loader
+        finds it. The ``suite`` argument records the operator's functional intent
+        (persisted as metadata by the engine); the discovered suite is ``custom``.
+
+        Returns {"path": <folder>, "files": {filename: content}, "check_name":
+        str, "class_name": str, "registered": False}.
         """
-        check_name = name.lower().replace(" ", "_").replace("-", "_")
+        check_name = self._custom_check_name(name)
         class_name = "".join(word.capitalize() for word in check_name.split("_")) + "Check"
-        file_name = f"{check_name}.py"
-        file_path = os.path.join(CUSTOM_DIR, file_name)
+        folder = os.path.join(CUSTOM_DIR, check_name)
 
-        if os.path.exists(file_path):
+        if os.path.exists(folder):
             return {
-                "path": file_path,
-                "code": None,
+                "path": folder,
+                "files": None,
                 "registered": False,
-                "error": f"File already exists: {file_path}",
+                "error": f"Custom check folder already exists: {folder}",
             }
 
-        cond_lines = []
-        if conditions:
-            for c in conditions:
-                op = c.get("operator", "truthy")
-                val = c.get("value")
-                if val is not None:
-                    cond_lines.append(
-                        f'        CheckCondition("{c["output_name"]}", "{op}", {val!r}),'
-                    )
-                else:
-                    cond_lines.append(f'        CheckCondition("{c["output_name"]}", "{op}"),')
+        files = self._render_check_folder(
+            check_name=check_name,
+            class_name=class_name,
+            description=description,
+            suite=suite,
+            conditions=conditions,
+            produces=produces,
+            service_types=service_types,
+            intrusive=intrusive,
+        )
+
+        await self.emit(
+            AgentEvent(
+                event_type=EventType.CHAINSMITH_CUSTOM_CHECK_CREATED,
+                agent=ComponentType.CHAINSMITH,
+                importance=EventImportance.MEDIUM,
+                message=f"Scaffolded custom check: {check_name} ({class_name})",
+                details={"path": folder, "class": class_name, "suite": suite},
+            )
+        )
+
+        return {
+            "path": folder,
+            "files": files,
+            "check_name": check_name,
+            "class_name": class_name,
+            "registered": False,
+            "message": (
+                f"Scaffold generated for {class_name} ({check_name}). Review the "
+                f"files, then write them with write_check — the loader "
+                f"auto-discovers the folder, no registration needed."
+            ),
+        }
+
+    def _render_check_folder(
+        self,
+        *,
+        check_name: str,
+        class_name: str,
+        description: str,
+        suite: str,
+        conditions: list[dict] | None,
+        produces: list[str] | None,
+        service_types: list[str] | None,
+        intrusive: bool,
+    ) -> dict[str, str]:
+        """Render the four files of a folder-shape custom check as a dict.
+
+        Pure (no I/O) so it backs both the preview and the on-disk write. The
+        ``contract.yaml`` is dumped from a dict so it always parses back into a
+        ``CheckContract`` and passes ``verify_contracts``.
+        """
+        depends_on: list[dict] = []
+        cond_lines: list[str] = []
+        for c in conditions or []:
+            op = c.get("operator", "truthy")
+            entry: dict = {"output_name": c["output_name"], "operator": op}
+            val = c.get("value")
+            if val is not None:
+                entry["value"] = val
+                cond_lines.append(f'        CheckCondition("{c["output_name"]}", "{op}", {val!r}),')
+            else:
+                cond_lines.append(f'        CheckCondition("{c["output_name"]}", "{op}"),')
+            depends_on.append(entry)
+
+        contract = {
+            "id": str(uuid.uuid4()),
+            "name": check_name,
+            "type": "check",
+            "description": description,
+            "entry": f"check.py:{class_name}",
+            "suite": "custom",
+            "depends_on": depends_on,
+            "produces": list(produces or []),
+            "intrusive": intrusive,
+            "service_types": list(service_types or []),
+            "parallel_safe": False,
+            "outputs": {"observations": ["Observation"]},
+            "side_effects": ["none"],
+            "techniques": [],
+            "references": [],
+            "reason": f"Custom check scaffolded by Chainsmith (functional intent: {suite}).",
+        }
+        contract_yaml = yaml.safe_dump(contract, sort_keys=False, default_flow_style=False)
 
         produces_str = ", ".join(f'"{p}"' for p in (produces or []))
         service_types_str = ", ".join(f'"{s}"' for s in (service_types or []))
+        cond_body = (
+            "\n".join(cond_lines)
+            if cond_lines
+            else "        # No conditions — runs unconditionally"
+        )
 
-        code = f'''"""
+        check_py = f'''"""
 Custom check: {description}
 
 Generated by Chainsmith on {datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")}.
-Review and modify before use.
+Functional-suite intent: {suite}. Discovered under the `custom` suite.
+Review and implement before use.
 """
 
 from typing import Any
@@ -464,7 +570,7 @@ class {class_name}(BaseCheck):
     description = "{description}"
 
     conditions = [
-{chr(10).join(cond_lines) if cond_lines else "        # No conditions — runs unconditionally"}
+{cond_body}
     ]
 
     produces = [{produces_str}]
@@ -492,31 +598,31 @@ class {class_name}(BaseCheck):
         )
 '''
 
-        await self.emit(
-            AgentEvent(
-                event_type=EventType.CHAINSMITH_CUSTOM_CHECK_CREATED,
-                agent=ComponentType.CHAINSMITH,
-                importance=EventImportance.MEDIUM,
-                message=f"Scaffolded custom check: {check_name} ({class_name})",
-                details={"path": file_path, "class": class_name, "suite": suite},
-            )
+        config_yaml = (
+            "enabled: true\n"
+            "on_critical: annotate\n"
+            "defaults:\n"
+            "  timeout_seconds: 30.0\n"
+            "  requests_per_second: 10.0\n"
+            "  retry_count: 1\n"
+            "  delay_between_targets: 0.2\n"
+        )
+
+        init_py = (
+            '"""Re-export the entry class so the loader and importers resolve the '
+            'same class object (identity-preserving, §3.1)."""\n\n'
+            f"from app.checks.custom.{check_name}.check import {class_name}\n\n"
+            f'__all__ = ["{class_name}"]\n'
         )
 
         return {
-            "path": file_path,
-            "code": code,
-            "class_name": class_name,
-            "module_name": check_name,
-            "registered": False,
-            "message": (
-                f"Scaffold generated for {class_name}. "
-                f"Review the code, then register it by adding "
-                f'("{check_name}", "{class_name}") to CUSTOM_CHECK_REGISTRY '
-                f"in app/checks/custom/__init__.py."
-            ),
+            "contract.yaml": contract_yaml,
+            "check.py": check_py,
+            "config.yaml": config_yaml,
+            "__init__.py": init_py,
         }
 
-    async def write_and_register_check(
+    async def write_check(
         self,
         name: str,
         description: str,
@@ -526,7 +632,11 @@ class {class_name}(BaseCheck):
         service_types: list[str] | None = None,
         intrusive: bool = False,
     ) -> dict:
-        """Scaffold, write to disk, and register a custom check."""
+        """Scaffold and write a folder-shape custom check to disk.
+
+        No registration step: the loader auto-discovers the new folder on the
+        next check load (C9 — the CUSTOM_CHECK_REGISTRY path is gone).
+        """
         result = await self.scaffold_check(
             name=name,
             description=description,
@@ -540,14 +650,16 @@ class {class_name}(BaseCheck):
         if result.get("error"):
             return result
 
-        with open(result["path"], "w") as f:
-            f.write(result["code"])
+        folder = result["path"]
+        os.makedirs(folder, exist_ok=True)
+        for filename, content in result["files"].items():
+            with open(os.path.join(folder, filename), "w", encoding="utf-8") as f:
+                f.write(content)
 
-        self._register_custom_check(result["module_name"], result["class_name"])
         result["registered"] = True
         result["message"] = (
-            f"Custom check {result['class_name']} created at {result['path']} "
-            f"and registered in CUSTOM_CHECK_REGISTRY."
+            f"Custom check {result['class_name']} written to {folder}. "
+            f"It is auto-discovered on the next check load — no registration needed."
         )
 
         await self.emit(
@@ -555,7 +667,7 @@ class {class_name}(BaseCheck):
                 event_type=EventType.CHAINSMITH_FIX_APPLIED,
                 agent=ComponentType.CHAINSMITH,
                 importance=EventImportance.MEDIUM,
-                message=f"Created and registered custom check: {result['class_name']}",
+                message=f"Created custom check folder: {result['class_name']} ({result['path']})",
             )
         )
 
@@ -887,63 +999,27 @@ class {class_name}(BaseCheck):
     # ═══════════════════════════════════════════════════════════════
 
     def _validate_custom_check_health(self, result: ValidationResult):
-        """Validate that registered custom checks can be instantiated."""
-        from app.checks.custom import CUSTOM_CHECK_REGISTRY
+        """Validate custom checks via the canonical contract validator (C9).
 
-        for module_name, class_name in CUSTOM_CHECK_REGISTRY:
-            try:
-                mod = importlib.import_module(f"app.checks.custom.{module_name}")
-                cls = getattr(mod, class_name)
+        The legacy ``CUSTOM_CHECK_REGISTRY`` is gone; custom checks are folder-shape
+        components under ``app/checks/custom/``, discovered like any core check.
+        Run the same ``verify_contracts`` gate the loader / CI / ``dev
+        verify-contracts`` apply, and fold any violations into the result so
+        ``validate`` still surfaces broken custom checks — now from the single
+        source of truth instead of a parallel hand-rolled check.
+        """
+        from app.component_loader import verify_contracts
 
-                if not issubclass(cls, BaseCheck):
-                    result.issues.append(
-                        ValidationIssue(
-                            category="invalid_custom_check",
-                            severity="error",
-                            message=f"Custom check `{class_name}` does not extend BaseCheck.",
-                            check_name=class_name,
-                        )
-                    )
-                    continue
-
-                instance = cls()
-
-                run_method = getattr(instance, "run", None)
-                if run_method is None:
-                    result.issues.append(
-                        ValidationIssue(
-                            category="invalid_custom_check",
-                            severity="error",
-                            message=f"Custom check `{class_name}` has no run() method.",
-                            check_name=class_name,
-                        )
-                    )
-                    continue
-
-                sig = inspect.signature(run_method)
-                params = [p for p in sig.parameters if p != "self"]
-                if "context" not in params:
-                    result.issues.append(
-                        ValidationIssue(
-                            category="invalid_custom_check",
-                            severity="warning",
-                            message=(
-                                f"Custom check `{class_name}` run() method does not accept "
-                                "'context' parameter."
-                            ),
-                            check_name=class_name,
-                        )
-                    )
-
-            except (ImportError, AttributeError, TypeError) as e:
-                result.issues.append(
-                    ValidationIssue(
-                        category="invalid_custom_check",
-                        severity="error",
-                        message=f"Custom check `{module_name}.{class_name}` failed to load: {e}",
-                        check_name=class_name,
-                    )
+        for violation in verify_contracts(Path(CUSTOM_DIR), "check"):
+            result.issues.append(
+                ValidationIssue(
+                    category="invalid_custom_check",
+                    severity="error",
+                    message=f"{violation.code}: {violation.message}",
+                    check_name=violation.path.name,
+                    suggestion="Run `chainsmith dev verify-contracts` for the full report.",
                 )
+            )
 
     # ═══════════════════════════════════════════════════════════════
     # Content-Aware Helpers (internal)
@@ -1013,26 +1089,6 @@ class {class_name}(BaseCheck):
                     except OSError:
                         continue
         return hasher.hexdigest()
-
-    def _register_custom_check(self, module_name: str, class_name: str):
-        """Add an entry to CUSTOM_CHECK_REGISTRY in custom/__init__.py."""
-        init_path = os.path.join(CUSTOM_DIR, "__init__.py")
-        with open(init_path) as f:
-            content = f.read()
-
-        entry = f'("{module_name}", "{class_name}")'
-        if entry in content:
-            return
-
-        content = content.replace(
-            "CUSTOM_CHECK_REGISTRY: list[tuple[str, str]] = []",
-            f"CUSTOM_CHECK_REGISTRY: list[tuple[str, str]] = [\n    {entry},\n]",
-        )
-        if "CUSTOM_CHECK_REGISTRY: list[tuple[str, str]] = [" not in content:
-            content = content.replace("\n]", f"\n    {entry},\n]")
-
-        with open(init_path, "w") as f:
-            f.write(content)
 
     # ═══════════════════════════════════════════════════════════════
     # Chat Interface

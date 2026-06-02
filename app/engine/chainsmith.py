@@ -119,9 +119,12 @@ async def create_check(
     service_types: list[str] | None = None,
     intrusive: bool = False,
 ) -> dict:
-    """Scaffold, write, and register a custom check. Persists metadata to DB."""
+    """Scaffold and write a folder-shape custom check. Persists metadata to DB.
+
+    No registry step (C9): the written folder is auto-discovered by the loader.
+    """
     agent = ChainsmithAgent()
-    result = await agent.write_and_register_check(
+    result = await agent.write_check(
         name=name,
         description=description,
         suite=suite,
