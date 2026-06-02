@@ -108,26 +108,11 @@ class SwarmConfig:
     max_agents: int = 50
 
 
-@dataclass
-class AdjudicatorConfig:
-    enabled: bool = True
-    context_file: str = "~/.chainsmith/adjudicator_context.yaml"
-
-
-@dataclass
-class TriageConfig:
-    enabled: bool = True
-    context_file: str = "~/.chainsmith/triage_context.yaml"
-    kb_path: str = "app/data/remediation_guidance.json"
-
-
-@dataclass
-class ResearcherConfig:
-    enabled: bool = True
-    offline_mode: bool = False
-    data_sources: list[str] = field(
-        default_factory=lambda: ["nvd", "exploitdb", "vendor_advisories"]
-    )
+# NOTE: The adjudicator / triage / researcher / coach agent configs moved out of
+# ChainsmithConfig in Phase 56.10c — each agent's knobs now live in its own
+# app/agents/<name>/config.yaml (`enabled` + `parameters`), with legacy
+# CHAINSMITH_<AGENT>_* env vars honored by the agent registry's back-compat shim.
+# LLM model routing for these agents stays central (LiteLLMConfig above).
 
 
 @dataclass
@@ -137,14 +122,6 @@ class CheckProofAdvisorConfig:
     include_commands: bool = True
     include_screenshots: bool = True
     template_dir: str = "app/data/proof_templates/"
-
-
-@dataclass
-class CoachConfig:
-    enabled: bool = True
-    context_window: str = "summary"  # summary | full
-    max_recent_events: int = 50
-    memory_cap: int = 10
 
 
 @dataclass
@@ -196,11 +173,8 @@ class ChainsmithConfig:
     scan_analysis_advisor: ScanAnalysisAdvisorConfig = field(
         default_factory=ScanAnalysisAdvisorConfig
     )
-    adjudicator: AdjudicatorConfig = field(default_factory=AdjudicatorConfig)
-    triage: TriageConfig = field(default_factory=TriageConfig)
-    researcher: ResearcherConfig = field(default_factory=ResearcherConfig)
+    # adjudicator / triage / researcher / coach moved to per-agent config.yaml (56.10c).
     check_proof_advisor: CheckProofAdvisorConfig = field(default_factory=CheckProofAdvisorConfig)
-    coach: CoachConfig = field(default_factory=CoachConfig)
     concurrency: ConcurrencyConfig = field(default_factory=ConcurrencyConfig)
     scan_stream: ScanStreamConfig = field(default_factory=ScanStreamConfig)
 
@@ -331,33 +305,8 @@ def _apply_yaml(cfg: ChainsmithConfig, data: dict) -> None:
         if "require_approval" in sa:
             sac.require_approval = bool(sa["require_approval"])
 
-    if "adjudicator" in data and isinstance(data["adjudicator"], dict):
-        adj = data["adjudicator"]
-        adjc = cfg.adjudicator
-        if "enabled" in adj:
-            adjc.enabled = bool(adj["enabled"])
-        if "context_file" in adj:
-            adjc.context_file = str(adj["context_file"])
-
-    if "triage" in data and isinstance(data["triage"], dict):
-        tr = data["triage"]
-        trc = cfg.triage
-        if "enabled" in tr:
-            trc.enabled = bool(tr["enabled"])
-        if "context_file" in tr:
-            trc.context_file = str(tr["context_file"])
-        if "kb_path" in tr:
-            trc.kb_path = str(tr["kb_path"])
-
-    if "researcher" in data and isinstance(data["researcher"], dict):
-        res = data["researcher"]
-        resc = cfg.researcher
-        if "enabled" in res:
-            resc.enabled = bool(res["enabled"])
-        if "offline_mode" in res:
-            resc.offline_mode = bool(res["offline_mode"])
-        if "data_sources" in res and isinstance(res["data_sources"], list):
-            resc.data_sources = [str(s) for s in res["data_sources"]]
+    # adjudicator / triage / researcher YAML blocks removed in 56.10c — those
+    # agents read their knobs from app/agents/<name>/config.yaml now.
 
     if "check_proof_advisor" in data and isinstance(data["check_proof_advisor"], dict):
         cpa = data["check_proof_advisor"]
@@ -373,17 +322,7 @@ def _apply_yaml(cfg: ChainsmithConfig, data: dict) -> None:
         if "template_dir" in cpa:
             cpac.template_dir = str(cpa["template_dir"])
 
-    if "coach" in data and isinstance(data["coach"], dict):
-        co = data["coach"]
-        coc = cfg.coach
-        if "enabled" in co:
-            coc.enabled = bool(co["enabled"])
-        if "context_window" in co:
-            coc.context_window = str(co["context_window"])
-        if "max_recent_events" in co:
-            coc.max_recent_events = int(co["max_recent_events"])
-        if "memory_cap" in co:
-            coc.memory_cap = int(co["memory_cap"])
+    # coach YAML block removed in 56.10c — read from app/agents/coach/config.yaml.
 
     if "concurrency" in data and isinstance(data["concurrency"], dict):
         cc = data["concurrency"]
@@ -489,19 +428,10 @@ def _apply_env(cfg: ChainsmithConfig) -> None:
         with contextlib.suppress(ValueError):
             cfg.swarm.task_timeout_seconds = int(v)
 
-    # Adjudicator overrides
-    if v := env.get("CHAINSMITH_ADJUDICATOR_ENABLED"):
-        cfg.adjudicator.enabled = v.lower() in ("true", "1", "yes")
-
-    # Triage overrides
-    if v := env.get("CHAINSMITH_TRIAGE_ENABLED"):
-        cfg.triage.enabled = v.lower() in ("true", "1", "yes")
-
-    # Researcher overrides
-    if v := env.get("CHAINSMITH_RESEARCHER_ENABLED"):
-        cfg.researcher.enabled = v.lower() in ("true", "1", "yes")
-    if v := env.get("CHAINSMITH_RESEARCHER_OFFLINE"):
-        cfg.researcher.offline_mode = v.lower() in ("true", "1", "yes")
+    # Adjudicator / Triage / Researcher env overrides moved to the agent
+    # registry's legacy back-compat shim in 56.10c (app/agents/registry.py).
+    # CHAINSMITH_ADJUDICATOR_ENABLED / CHAINSMITH_TRIAGE_ENABLED /
+    # CHAINSMITH_RESEARCHER_ENABLED / CHAINSMITH_RESEARCHER_OFFLINE still work.
 
     # CheckProofAdvisor overrides
     if v := env.get("CHAINSMITH_CHECK_PROOF_ADVISOR_ENABLED"):
@@ -511,12 +441,8 @@ def _apply_env(cfg: ChainsmithConfig) -> None:
     if v := env.get("CHAINSMITH_SCAN_STREAM_ENABLED"):
         cfg.scan_stream.enabled = v.lower() in ("true", "1", "yes")
 
-    # Coach overrides
-    if v := env.get("CHAINSMITH_COACH_ENABLED"):
-        cfg.coach.enabled = v.lower() in ("true", "1", "yes")
-    if v := env.get("CHAINSMITH_COACH_MEMORY_CAP"):
-        with contextlib.suppress(ValueError):
-            cfg.coach.memory_cap = int(v)
+    # Coach env overrides moved to the agent registry's legacy back-compat shim
+    # in 56.10c. CHAINSMITH_COACH_ENABLED / CHAINSMITH_COACH_MEMORY_CAP still work.
 
 
 def load_config(config_path: Path | None = None) -> ChainsmithConfig:

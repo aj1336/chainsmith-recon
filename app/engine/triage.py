@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING
 
 from app.agents.registry import get_agent_registry
 from app.agents.triage.agent import _match_kb_entries, load_remediation_kb
-from app.config import get_config
 from app.lib.llm import get_llm_client
 from app.lib.timeutils import iso_utc, parse_iso_utc
 from app.models import (
@@ -26,7 +25,6 @@ from app.models import (
 )
 
 if TYPE_CHECKING:
-    from app.config import ChainsmithConfig
     from app.scan_session import ScanSession
 
 # Optional YAML support
@@ -39,19 +37,36 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# Fallbacks if the triage spec is absent (disabled) or omits the knob.
+# Canonical values live in app/agents/triage/config.yaml (parameters).
+DEFAULT_TRIAGE_CONTEXT_FILE = "~/.chainsmith/triage_context.yaml"
+DEFAULT_TRIAGE_KB_PATH = "app/data/remediation_guidance.json"
+
+
+def _triage_context_file(context_file: str | None) -> Path:
+    """Resolve the triage context file path (explicit arg → registry → default)."""
+    if context_file is None:
+        context_file = get_agent_registry().param(
+            "triage", "context_file", DEFAULT_TRIAGE_CONTEXT_FILE
+        )
+    return Path(context_file).expanduser()
+
 
 # ─── Team Context Load/Save ─────────────────────────────────────
 
 
-def load_team_context(config: "ChainsmithConfig | None" = None) -> TeamContext | None:
+def load_team_context(context_file: str | None = None) -> TeamContext | None:
     """
-    Load team context from ~/.chainsmith/triage_context.yaml.
+    Load team context from the triage agent's `context_file`.
 
     Returns None if file doesn't exist or can't be parsed.
     This is expected and normal — triage works without it.
+
+    Args:
+        context_file: Explicit path. Falls back to the triage agent's resolved
+            `config.yaml` parameter (via the agent registry) if None.
     """
-    cfg = config or get_config()
-    path = Path(cfg.triage.context_file).expanduser()
+    path = _triage_context_file(context_file)
 
     if not path.exists():
         logger.info("No team context file found at %s — proceeding without it", path)
@@ -100,19 +115,22 @@ def load_team_context(config: "ChainsmithConfig | None" = None) -> TeamContext |
 
 def save_team_context(
     context: TeamContext,
-    config: "ChainsmithConfig | None" = None,
+    context_file: str | None = None,
 ) -> bool:
     """
-    Save team context to ~/.chainsmith/triage_context.yaml.
+    Save team context to the triage agent's `context_file`.
 
     Returns True if saved successfully, False otherwise.
+
+    Args:
+        context_file: Explicit path. Falls back to the triage agent's resolved
+            `config.yaml` parameter (via the agent registry) if None.
     """
     if not _YAML_AVAILABLE:
         logger.warning("PyYAML not installed — cannot save team context")
         return False
 
-    cfg = config or get_config()
-    path = Path(cfg.triage.context_file).expanduser()
+    path = _triage_context_file(context_file)
 
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -216,9 +234,9 @@ async def run_triage(session: "ScanSession") -> None:
     await _update_triage_status_in_db(scan_id, triage_status="triaging")
 
     try:
-        # Check if triage is enabled
-        cfg = get_config()
-        if not cfg.triage.enabled:
+        # Check if triage is enabled. config.yaml (enabled) is the single source
+        # of truth (56.10c): a disabled agent isn't in the registry.
+        if "triage" not in get_agent_registry():
             session.triage_status = "complete"
             await _update_triage_status_in_db(
                 scan_id,
@@ -309,7 +327,8 @@ async def run_triage(session: "ScanSession") -> None:
         team_context = load_team_context()
 
         # 5. Load remediation KB
-        kb = load_remediation_kb(cfg.triage.kb_path)
+        kb_path = get_agent_registry().param("triage", "kb_path", DEFAULT_TRIAGE_KB_PATH)
+        kb = load_remediation_kb(kb_path)
         kb_entries = _match_kb_entries(verified, kb)
 
         # 6. Create agent (via the folder-shape factory) and run

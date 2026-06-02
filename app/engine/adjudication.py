@@ -11,12 +11,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from app.agents.registry import get_agent_registry
-from app.config import get_config
 from app.lib.llm import get_llm_client
 from app.models import OperatorContext
 
 if TYPE_CHECKING:
-    from app.config import ChainsmithConfig
     from app.scan_session import ScanSession
 
 # Optional YAML support
@@ -28,6 +26,10 @@ except ImportError:
     _YAML_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
+
+# Fallback if the adjudicator spec is absent (disabled) or omits the knob.
+# Canonical value lives in app/agents/adjudicator/config.yaml (parameters).
+DEFAULT_ADJUDICATOR_CONTEXT_FILE = "~/.chainsmith/adjudicator_context.yaml"
 
 
 async def _update_adjudication_status_in_db(scan_id: str | None, **fields) -> None:
@@ -55,18 +57,22 @@ async def _load_observations_from_db(scan_id: str | None) -> list[dict]:
         return []
 
 
-def load_operator_context(config: "ChainsmithConfig | None" = None) -> OperatorContext | None:
+def load_operator_context(context_file: str | None = None) -> OperatorContext | None:
     """
-    Load operator context from ~/.chainsmith/adjudicator_context.yaml.
+    Load operator context from the adjudicator's `context_file`.
 
     Returns None if file doesn't exist or can't be parsed.
     This is expected and normal — adjudication works without it.
 
     Args:
-        config: Explicit config to use. Falls back to get_config() if None.
+        context_file: Explicit path to use. Falls back to the adjudicator's
+            resolved `config.yaml` parameter (via the agent registry) if None.
     """
-    cfg = config or get_config()
-    path = Path(cfg.adjudicator.context_file).expanduser()
+    if context_file is None:
+        context_file = get_agent_registry().param(
+            "adjudicator", "context_file", DEFAULT_ADJUDICATOR_CONTEXT_FILE
+        )
+    path = Path(context_file).expanduser()
 
     if not path.exists():
         logger.info("No operator context file found at %s — proceeding without it", path)
@@ -112,9 +118,9 @@ async def run_adjudication(
     await _update_adjudication_status_in_db(scan_id, adjudication_status="adjudicating")
 
     try:
-        # Check if adjudicator is enabled
-        cfg = get_config()
-        if not cfg.adjudicator.enabled:
+        # Check if adjudicator is enabled. config.yaml (enabled) is the single
+        # source of truth (56.10c): a disabled agent isn't in the registry.
+        if "adjudicator" not in get_agent_registry():
             session.adjudication_status = "complete"
             await _update_adjudication_status_in_db(
                 scan_id,

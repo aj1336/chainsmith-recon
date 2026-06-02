@@ -1,8 +1,16 @@
 # app/agents/researcher/config.yaml — tunables only (Phase 56 §5)
 #
-# Only `enabled` is meaningful for an agent today. The researcher's own knob
-# (offline_mode) still lives in ChainsmithConfig.researcher and migrates here
-# in 56.10c; LLM model routing stays central in ChainsmithConfig.litellm.
-# Until then, offline_mode can be injected per-call via the factory.
+# `enabled` is the single source of truth for whether the researcher is
+# available. `parameters` holds the agent's own knobs, migrated out of
+# ChainsmithConfig.researcher in 56.10c. LLM model routing stays central in
+# ChainsmithConfig.litellm.
+#
+# offline_mode is a ResearcherAgent constructor argument — from_spec forwards it;
+# a caller may still override it per-call via the factory.
+# (The legacy data_sources knob was never consumed and was dropped in 56.10c.)
+# Legacy back-compat: CHAINSMITH_RESEARCHER_ENABLED toggles `enabled`,
+# CHAINSMITH_RESEARCHER_OFFLINE overrides offline_mode.
 
 enabled: true
+parameters:
+  offline_mode: false

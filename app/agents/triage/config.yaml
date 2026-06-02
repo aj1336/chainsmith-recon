@@ -1,7 +1,16 @@
 # app/agents/triage/config.yaml — tunables only (Phase 56 §5)
 #
-# Only `enabled` is meaningful for an agent today. The triage knobs
-# (context_file, kb_path) still live in ChainsmithConfig.triage and migrate
-# here in 56.10c; LLM model routing stays central in ChainsmithConfig.litellm.
+# `enabled` is the single source of truth for whether the triage pipeline runs
+# (the engine gates on registry membership). `parameters` holds the agent's own
+# knobs, migrated out of ChainsmithConfig.triage in 56.10c. LLM model routing
+# stays central in ChainsmithConfig.litellm (model_triage).
+#
+# context_file and kb_path are engine-glue (read by load/save_team_context and
+# load_remediation_kb via the registry accessor), not TriageAgent constructor
+# arguments.
+# Legacy back-compat: CHAINSMITH_TRIAGE_ENABLED still toggles `enabled`.
 
 enabled: true
+parameters:
+  context_file: "~/.chainsmith/triage_context.yaml"
+  kb_path: "app/data/remediation_guidance.json"

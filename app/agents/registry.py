@@ -21,6 +21,8 @@ from __future__ import annotations
 
 import importlib
 import logging
+import os
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -43,6 +45,59 @@ logger = logging.getLogger(__name__)
 
 # The agent type root — this package. Discovery walks it for `contract.yaml`.
 AGENTS_ROOT = Path(__file__).resolve().parent
+
+
+def _coerce_bool(v: str) -> bool:
+    return v.lower() in ("true", "1", "yes")
+
+
+# Legacy `CHAINSMITH_<AGENT>_<KNOB>` env back-compat (pre-56.10c, when these
+# knobs lived on ChainsmithConfig). Maps each agent to {env_var: (target,
+# caster)}; target "enabled" overrides `ComponentConfig.enabled`, anything else
+# is a `parameters` key. Applied at discovery so a disabled agent is skipped
+# before it's added to the registry — keeping config.yaml the single source of
+# truth while honoring the old env vars (operator decision, 56.10c).
+_LEGACY_AGENT_ENV: dict[str, dict[str, tuple[str, Callable[[str], object]]]] = {
+    "adjudicator": {"CHAINSMITH_ADJUDICATOR_ENABLED": ("enabled", _coerce_bool)},
+    "triage": {"CHAINSMITH_TRIAGE_ENABLED": ("enabled", _coerce_bool)},
+    "researcher": {
+        "CHAINSMITH_RESEARCHER_ENABLED": ("enabled", _coerce_bool),
+        "CHAINSMITH_RESEARCHER_OFFLINE": ("offline_mode", _coerce_bool),
+    },
+    "coach": {
+        "CHAINSMITH_COACH_ENABLED": ("enabled", _coerce_bool),
+        "CHAINSMITH_COACH_MEMORY_CAP": ("memory_cap", int),
+    },
+}
+
+
+def _apply_legacy_env(
+    name: str, config: ComponentConfig, env: Mapping[str, str]
+) -> ComponentConfig:
+    """Return `config` with legacy env overrides applied (no-op if none set)."""
+    overrides = _LEGACY_AGENT_ENV.get(name)
+    if not overrides:
+        return config
+
+    enabled = config.enabled
+    params = dict(config.parameters)
+    for var, (target, caster) in overrides.items():
+        raw = env.get(var)
+        if raw is None:
+            continue
+        try:
+            value = caster(raw)
+        except (TypeError, ValueError):
+            logger.warning("Ignoring env %s=%r: not coercible", var, raw)
+            continue
+        if target == "enabled":
+            enabled = bool(value)
+        else:
+            params[target] = value
+
+    if enabled == config.enabled and params == config.parameters:
+        return config
+    return config.model_copy(update={"enabled": enabled, "parameters": params})
 
 
 @dataclass(frozen=True)
@@ -77,6 +132,19 @@ class AgentRegistry:
     def spec(self, name: str) -> AgentSpec:
         return self._specs[name]
 
+    def param(self, name: str, key: str, default: object = None) -> object:
+        """Read a resolved `config.yaml` parameter for an agent.
+
+        Used by engine glue (e.g. load_operator_context / load_team_context /
+        load_remediation_kb) to reach the agent's path knobs without
+        constructing the agent. Returns `default` if the agent is absent
+        (disabled / unknown) or the key is unset.
+        """
+        spec = self._specs.get(name)
+        if spec is None:
+            return default
+        return spec.config.parameters.get(key, default)
+
     def create(self, name: str, **runtime_deps) -> BaseAgent:
         """Build the named agent, injecting the supplied runtime deps."""
         if name not in self._specs:
@@ -107,6 +175,7 @@ def discover_agent_specs(root: Path = AGENTS_ROOT) -> AgentRegistry:
             config = ComponentConfig(**(yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}))
         else:
             config = ComponentConfig()
+        config = _apply_legacy_env(contract.name, config, os.environ)
         if not config.enabled:
             logger.info("Skipping disabled agent: %s", contract.name)
             continue

@@ -8,7 +8,6 @@ co-located with the triage agent component (Phase 56.10 split).
 """
 
 from datetime import UTC, datetime
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -23,9 +22,7 @@ class TestTeamContextLoadSave:
 
     def test_load_missing_file(self, tmp_path):
         """Returns None when file doesn't exist."""
-        cfg = MagicMock()
-        cfg.triage.context_file = str(tmp_path / "nonexistent.yaml")
-        result = load_team_context(cfg)
+        result = load_team_context(context_file=str(tmp_path / "nonexistent.yaml"))
         assert result is None
 
     def test_load_valid_file(self, tmp_path):
@@ -41,9 +38,7 @@ class TestTeamContextLoadSave:
         yaml_file = tmp_path / "triage_context.yaml"
         yaml_file.write_text(yaml_content)
 
-        cfg = MagicMock()
-        cfg.triage.context_file = str(yaml_file)
-        result = load_team_context(cfg)
+        result = load_team_context(context_file=str(yaml_file))
 
         assert result is not None
         assert result.deployment_velocity == "yes"
@@ -59,9 +54,7 @@ class TestTeamContextLoadSave:
         yaml_file = tmp_path / "triage_context.yaml"
         yaml_file.write_text(yaml_content)
 
-        cfg = MagicMock()
-        cfg.triage.context_file = str(yaml_file)
-        result = load_team_context(cfg)
+        result = load_team_context(context_file=str(yaml_file))
 
         assert result is not None
         assert result.deployment_velocity == "no"
@@ -72,9 +65,7 @@ class TestTeamContextLoadSave:
         yaml_file = tmp_path / "triage_context.yaml"
         yaml_file.write_text("- just\n- a\n- list\n")
 
-        cfg = MagicMock()
-        cfg.triage.context_file = str(yaml_file)
-        result = load_team_context(cfg)
+        result = load_team_context(context_file=str(yaml_file))
         assert result is None
 
     def test_save_and_reload(self, tmp_path):
@@ -89,13 +80,11 @@ class TestTeamContextLoadSave:
         )
 
         yaml_file = tmp_path / "triage_context.yaml"
-        cfg = MagicMock()
-        cfg.triage.context_file = str(yaml_file)
 
-        assert save_team_context(ctx, cfg) is True
+        assert save_team_context(ctx, context_file=str(yaml_file)) is True
         assert yaml_file.exists()
 
-        loaded = load_team_context(cfg)
+        loaded = load_team_context(context_file=str(yaml_file))
         assert loaded is not None
         assert loaded.deployment_velocity == "with_approval"
         assert loaded.team_size == "4_plus"

@@ -40,8 +40,13 @@ class Defaults(BaseModel):
 class ComponentConfig(BaseModel):
     """Parsed `config.yaml` for a single component (§5).
 
-    `parameters` (per-check custom tunables) is deliberately absent this phase —
-    those stay as class attributes until the phase-17 WebUI wave (§5 note).
+    `parameters` holds per-component custom knobs that fall outside the standard
+    `defaults` set. For *checks* it stays empty — their custom tunables remain
+    class attributes until the phase-17 WebUI wave (§5 note). For *agents* it
+    carries construction/engine knobs migrated out of `ChainsmithConfig` in
+    56.10c (e.g. coach `memory_cap`, researcher `offline_mode`, the adjudicator/
+    triage `context_file`, triage `kb_path`). `from_spec()` forwards the subset
+    the agent constructor accepts; the rest are read via the registry accessor.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -49,6 +54,7 @@ class ComponentConfig(BaseModel):
     enabled: bool = True  # false → loader skips the component
     on_critical: OnCritical = "annotate"
     defaults: Defaults = Field(default_factory=Defaults)
+    parameters: dict[str, object] = Field(default_factory=dict)
 
 
 class SuiteConfig(BaseModel):

@@ -18,6 +18,7 @@ for agents; calling it raises (inherited from `BaseComponent`).
 
 from __future__ import annotations
 
+import inspect
 from typing import TYPE_CHECKING
 
 from app.components.base import BaseComponent
@@ -58,14 +59,20 @@ class BaseAgent(BaseComponent):
 
         `client` and `event_callback` are runtime (per request/session) and come
         from the caller; identity and the `enabled` baseline come from the
-        contract/config. Any extra keyword (`**ctor_knobs`) is forwarded to the
-        subclass `__init__` — this is how per-agent construction knobs that do
-        not yet live in `config.yaml` reach the constructor (e.g. the coach's
-        `memory_cap`, the researcher's `offline_mode`). They migrate into
-        `config.yaml` and are resolved here in 56.10c; until then a caller may
-        pass them through `AgentRegistry.create(...)`.
+        contract/config.
+
+        Construction knobs live in `config.yaml`'s `parameters` (56.10c). We
+        forward the subset the subclass `__init__` actually accepts — e.g. the
+        coach's `memory_cap`, the researcher's `offline_mode` — and skip
+        engine-glue params (the adjudicator/triage `context_file`, triage
+        `kb_path`) that are read elsewhere via the registry accessor. An explicit
+        `**ctor_knobs` from the caller wins over the config value, so a caller
+        can still override per-call through `AgentRegistry.create(...)`.
         """
-        instance = cls(client=client, event_callback=event_callback, **ctor_knobs)
+        accepted = set(inspect.signature(cls.__init__).parameters)
+        ctor_params = {k: v for k, v in config.parameters.items() if k in accepted}
+        ctor_params.update(ctor_knobs)  # explicit caller knobs win over config
+        instance = cls(client=client, event_callback=event_callback, **ctor_params)
         instance.id = str(contract.id)
         instance.name = contract.name
         instance.component_type = "agent"

@@ -1,7 +1,14 @@
 # app/agents/adjudicator/config.yaml — tunables only (Phase 56 §5)
 #
-# Only `enabled` is meaningful for an agent today. The adjudicator's own knobs
-# (context_file) still live in ChainsmithConfig.adjudicator and migrate here in
-# 56.10c; LLM model routing stays central in ChainsmithConfig.litellm.
+# `enabled` is the single source of truth for whether the adjudicator pipeline
+# runs (the engine gates on registry membership). `parameters` holds the agent's
+# own knobs, migrated out of ChainsmithConfig.adjudicator in 56.10c. LLM model
+# routing stays central in ChainsmithConfig.litellm (model_adjudicator).
+#
+# context_file is engine-glue (read by load_operator_context via the registry
+# accessor), not an AdjudicatorAgent constructor argument.
+# Legacy back-compat: CHAINSMITH_ADJUDICATOR_ENABLED still toggles `enabled`.
 
 enabled: true
+parameters:
+  context_file: "~/.chainsmith/adjudicator_context.yaml"
