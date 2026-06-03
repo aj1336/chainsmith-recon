@@ -70,6 +70,9 @@ parse_profile_flag() {
                 i=$(( i + 1 ))
                 PROFILE_OVERRIDE="${args[$i]:-}"
                 ;;
+            --profile=*|--provider=*|-p=*)
+                PROFILE_OVERRIDE="${args[$i]#*=}"
+                ;;
         esac
         i=$(( i + 1 ))
     done

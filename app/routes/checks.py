@@ -7,16 +7,30 @@ Endpoints for:
 """
 
 import logging
+from pathlib import Path
 
+import yaml
 from fastapi import APIRouter, HTTPException
 
+from app.api_models import CheckOverride
 from app.check_resolver import get_all_check_metadata
-from app.engine.scanner import AVAILABLE_CHECKS, get_check_info
+from app.component_loader import find_component_dir
+from app.components.config_models import ComponentConfig
+from app.engine.scanner import AVAILABLE_CHECKS, get_check_info, rebuild_available_checks
 from app.scenarios import get_scenario_manager
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# The numeric knobs that live under config.yaml `defaults:` (on_critical is top-level).
+_KNOB_FIELDS = (
+    "timeout_seconds",
+    "requests_per_second",
+    "retry_count",
+    "delay_between_targets",
+)
+_CHECKS_ROOT = Path(__file__).resolve().parent.parent / "checks"
 
 
 def _disabled_check_entry(meta) -> dict:
@@ -111,3 +125,60 @@ async def get_check_details(check_name: str):
     if check_name not in AVAILABLE_CHECKS:
         raise HTTPException(404, f"Check '{check_name}' not found")
     return AVAILABLE_CHECKS[check_name]
+
+
+@router.put("/api/v1/checks/{check_name}/config")
+async def save_check_config_default(check_name: str, body: CheckOverride):
+    """Persist tunable overrides into a check's `config.yaml` (§5.1 layer 3 — 56.17).
+
+    The "save as default" sibling of the per-scan scalpel: the set fields are written
+    into the check's `config.yaml` (`on_critical` at top level; the numeric knobs
+    under `defaults:`), so they become the resolved baseline for every future scan.
+    Other config keys (`enabled`, `reason`, `parameters`) are preserved.
+
+    NOTE: the file is rewritten with PyYAML, which does NOT preserve comments — the
+    config.yaml header comments are lost on save (surfaced in the response `note`).
+    The merged result is schema-validated before writing, and the in-memory display
+    registry is refreshed so the change is visible immediately (no restart).
+    """
+    data = body.model_dump(exclude_none=True)
+    if not data:
+        raise HTTPException(400, "No fields to save; provide at least one knob or on_critical.")
+
+    comp_dir = find_component_dir(_CHECKS_ROOT, check_name)
+    if comp_dir is None:
+        raise HTTPException(404, f"Check '{check_name}' not found")
+
+    cfg_path = comp_dir / "config.yaml"
+    raw = {}
+    if cfg_path.exists():
+        raw = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+        if not isinstance(raw, dict):
+            raise HTTPException(500, f"Existing config.yaml for '{check_name}' is not a mapping.")
+
+    defaults = dict(raw.get("defaults") or {})
+    for knob in _KNOB_FIELDS:
+        if knob in data:
+            defaults[knob] = data[knob]
+    if defaults:
+        raw["defaults"] = defaults
+    if "on_critical" in data:
+        raw["on_critical"] = data["on_critical"]
+
+    # Validate the merged document still parses before touching the file.
+    try:
+        ComponentConfig(**raw)
+    except Exception as e:
+        raise HTTPException(400, f"Resulting config.yaml is invalid: {e}") from e
+
+    cfg_path.write_text(yaml.safe_dump(raw, sort_keys=False), encoding="utf-8")
+    rebuild_available_checks()  # refresh the display cache so the modal reflects it
+    logger.info("Saved config default(s) for '%s': %s", check_name, data)
+
+    return {
+        "status": "saved",
+        "check": check_name,
+        "config_path": str(cfg_path),
+        "saved": data,
+        "note": "config.yaml comments are not preserved on save",
+    }

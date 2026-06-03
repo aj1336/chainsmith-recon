@@ -6,7 +6,7 @@ Pydantic models for HTTP API endpoints.
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # ─── Scope Models ─────────────────────────────────────────────
 
@@ -62,6 +62,30 @@ class ExtendedScopeInput(BaseModel):
 # ─── Scan Start Models ───────────────────────────────────────
 
 
+class CheckOverride(BaseModel):
+    """Per-check tunable override (§5.1 **layer 6b** — the runtime scalpel, 56.17).
+
+    All fields optional; only the ones set override the resolved baseline. Used two
+    ways with the SAME shape:
+      * per-scan (ephemeral) — carried in `ScanStartInput.check_overrides` and
+        applied onto the matching check instance AFTER the preset layer (6b > 6a);
+      * save-as-default (persistent) — `PUT /api/v1/checks/{name}/config` writes the
+        set fields into the check's `config.yaml` (layer 3).
+
+    `on_critical: inherit` is valid layer-3 config but meaningless at scan time (the
+    baseline is already resolved), so the scan path ignores it; it is accepted only
+    so the one shape can also persist to config.yaml.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    timeout_seconds: float | None = Field(default=None, gt=0)
+    requests_per_second: float | None = Field(default=None, gt=0)
+    retry_count: int | None = Field(default=None, ge=0)
+    delay_between_targets: float | None = Field(default=None, ge=0)
+    on_critical: Literal["annotate", "skip_downstream", "stop", "inherit"] | None = None
+
+
 class ScanStartInput(BaseModel):
     """Optional body for POST /api/scan with check/suite filtering."""
 
@@ -69,6 +93,9 @@ class ScanStartInput(BaseModel):
     suites: list[str] = Field(default_factory=list)  # Run only checks from these suites
     port_profile: Literal["web", "ai", "full", "lab"] | None = None
     preset: str | None = None  # Named scan preset; explicit checks/suites/port_profile win over it
+    # Per-check, per-scan tunable overrides (layer 6b). Keyed by check name; applied
+    # after the preset's knob layer so an explicit edit beats a preset bundle.
+    check_overrides: dict[str, CheckOverride] = Field(default_factory=dict)
     acknowledge_outside_window: bool = False  # Per-scan override for scan-window gate
 
 

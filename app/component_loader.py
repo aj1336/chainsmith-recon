@@ -98,6 +98,31 @@ def _module_for(component_dir: Path, entry_filename: str) -> str:
     return f"{pkg}.{stem}" if pkg else stem
 
 
+def find_component_dir(
+    root: Path, name: str, component_type: ComponentType = "check"
+) -> Path | None:
+    """Locate a component's folder under `root` by its contract `name` (56.17).
+
+    Walks `contract.yaml` files and returns the folder whose contract name matches,
+    or None. Import-free (parses the contract only) and covers disabled components.
+    Used by the "save as default" config-write endpoint to find which `config.yaml`
+    to edit. Folder name == contract name is a loader invariant, but matching on the
+    parsed name keeps this honest even mid-rename.
+    """
+    root = Path(root)
+    if not root.exists():
+        return None
+    model_cls = contract_model_for(component_type)
+    for contract_path in sorted(root.rglob("contract.yaml")):
+        try:
+            model = model_cls(**(yaml.safe_load(contract_path.read_text(encoding="utf-8")) or {}))
+        except Exception:
+            continue
+        if model.name == name:
+            return contract_path.parent
+    return None
+
+
 def _entry_class_def(tree: ast.Module, class_name: str) -> ast.ClassDef | None:
     for node in tree.body:
         if isinstance(node, ast.ClassDef) and node.name == class_name:

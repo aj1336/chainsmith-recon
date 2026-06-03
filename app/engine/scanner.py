@@ -18,6 +18,7 @@ from app.config import get_config
 from app.db.persist import on_scan_complete, on_scan_start
 from app.db.writers import CheckLogWriter, ObservationWriter
 from app.gates.guardian import Guardian
+from app.scan_overrides import apply_check_overrides
 from app.scan_presets import apply_runtime, get_preset, resolve_selection
 from app.scan_registry import get_registry
 from app.scan_session import ScanSession
@@ -70,10 +71,25 @@ def get_check_info(check) -> dict:
     }
 
 
-# Build AVAILABLE_CHECKS dict for API
-AVAILABLE_CHECKS = {}
-for _check in get_all_checks():
-    AVAILABLE_CHECKS[_check.name] = get_check_info(_check)
+# Build AVAILABLE_CHECKS dict for API (the display registry behind /api/v1/checks).
+AVAILABLE_CHECKS: dict = {}
+
+
+def rebuild_available_checks() -> dict:
+    """Re-discover checks from disk and refresh the AVAILABLE_CHECKS display cache.
+
+    The registry is built once at import; `get_real_checks()` is uncached so a scan
+    always sees the current config.yaml, but the display cache is stale after a
+    config write (the 56.17 "save as default" endpoint). Calling this rebuilds it
+    in place so the WebUI reflects a saved default immediately, no restart.
+    """
+    AVAILABLE_CHECKS.clear()
+    for _check in get_all_checks():
+        AVAILABLE_CHECKS[_check.name] = get_check_info(_check)
+    return AVAILABLE_CHECKS
+
+
+rebuild_available_checks()
 
 
 # ─── Scan Execution ───────────────────────────────────────────
@@ -86,6 +102,7 @@ async def run_scan(
     port_profile: str | None = None,
     session: "ScanSession | None" = None,
     preset: str | None = None,
+    check_overrides: dict | None = None,
 ):
     """
     Run web reconnaissance checks with progress tracking.
@@ -177,8 +194,9 @@ async def run_scan(
         )
 
         # Apply the preset's runtime layer (intrusive filter + knob overrides)
-        # onto the resolved instances.
+        # onto the resolved instances, then the per-check scalpel on top (6b > 6a).
         checks = apply_runtime(preset_obj, checks)
+        checks = apply_check_overrides(checks, check_overrides)
 
         if not checks:
             logger.warning("No checks to run!")

@@ -116,6 +116,7 @@ async def start_scan(body: ScanStartInput = ScanStartInput()):
             port_profile=body.port_profile or None,
             session=session,
             preset=body.preset or None,
+            check_overrides=body.check_overrides or None,
         )
     )
 

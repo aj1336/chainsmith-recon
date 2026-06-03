@@ -103,6 +103,19 @@
 
             <!-- Check Suites -->
             <div class="section-divider">Check Suites</div>
+            <div class="suites-controls">
+                <div class="suites-control">
+                    <label for="preset-select">Preset</label>
+                    <select class="form-input" id="preset-select"
+                        title="A named scan bundle (selection + per-check knobs). Explicit suite/check selection still wins over it.">
+                        <option value="">— none —</option>
+                    </select>
+                </div>
+                <label class="suites-control toggle-inline" title="Also list checks turned off via config.yaml (read-only)">
+                    <input type="checkbox" id="toggle-disabled">
+                    <span>Show disabled checks</span>
+                </label>
+            </div>
             <div id="suites-container">
                 <!-- Populated by JS -->
             </div>
@@ -366,6 +379,22 @@
         </div>
     </div>
 
+    <!-- Check Detail Modal (info + resolved config + per-check editing) -->
+    <div class="modal-overlay" id="check-modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="check-modal-title">Check</h3>
+                <button class="drawer-close" id="close-check-modal">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body" id="check-modal-body"></div>
+        </div>
+    </div>
+
     <script src="/static/js/api.js"></script>
     <script src="/static/js/chat.js"></script>
     <script src="/static/js/guided.js"></script>
@@ -383,14 +412,19 @@
 
         // Populated dynamically from /api/v1/checks
         let CHECK_SUITES = {};
+        // name → full check object (description/config/provenance/enabled/...).
+        const CHECK_BY_NAME = {};
         // Set of intrusive check names (for per-check lock/unlock)
         const INTRUSIVE_CHECKS = new Set();
+        // Per-check, per-scan tunable overrides (layer 6b), keyed by check name.
+        const PENDING_OVERRIDES = {};
 
-        async function loadCheckSuites() {
-            const res = await fetch('/api/v1/checks');
-            const data = await res.json();
+        async function loadCheckSuites(includeDisabled = false) {
+            const data = await api.getChecks(includeDisabled);
             const grouped = {};
+            INTRUSIVE_CHECKS.clear();
             for (const check of data.checks) {
+                CHECK_BY_NAME[check.name] = check;
                 const suite = check.suite || 'other';
                 if (!grouped[suite]) {
                     const meta = SUITE_META[suite] || { name: suite.charAt(0).toUpperCase() + suite.slice(1), order: 99 };
@@ -414,6 +448,109 @@
             );
         }
 
+        // ── Check detail modal (reuses api.js getCheckModalContent) ──
+        function openCheckModal(name) {
+            const check = CHECK_BY_NAME[name];
+            if (!check) return;
+            document.getElementById('check-modal-title').textContent = name.replace(/_/g, ' ');
+            document.getElementById('check-modal-body').innerHTML = getCheckModalContent(check);
+            document.getElementById('check-modal-overlay').classList.add('open');
+        }
+        function closeCheckModal() {
+            document.getElementById('check-modal-overlay').classList.remove('open');
+        }
+
+        // ── Per-check override editor (consumed by the modal config section) ──
+        window.CheckOverrideEditor = {
+            getPending(name) { return PENDING_OVERRIDES[name] || null; },
+            _read() {
+                const ov = {};
+                for (const key of ['timeout_seconds', 'requests_per_second', 'retry_count', 'delay_between_targets']) {
+                    const el = document.getElementById('cfg-' + key);
+                    if (el && el.value !== '') {
+                        const num = Number(el.value);
+                        if (!Number.isNaN(num)) ov[key] = num;
+                    }
+                }
+                const oc = document.getElementById('cfg-on_critical');
+                if (oc && oc.value) ov.on_critical = oc.value;
+                return ov;
+            },
+            applyForScan(name) {
+                const ov = this._read();
+                if (Object.keys(ov).length === 0) delete PENDING_OVERRIDES[name];
+                else PENDING_OVERRIDES[name] = ov;
+                this._markRow(name);
+                this._status(PENDING_OVERRIDES[name]
+                    ? 'Saved for the next scan only (layer 6b).'
+                    : 'No values set — per-scan override cleared.');
+            },
+            clearPending(name) {
+                delete PENDING_OVERRIDES[name];
+                this._markRow(name);
+                ['timeout_seconds', 'requests_per_second', 'retry_count', 'delay_between_targets'].forEach(k => {
+                    const el = document.getElementById('cfg-' + k); if (el) el.value = '';
+                });
+                const oc = document.getElementById('cfg-on_critical'); if (oc) oc.value = '';
+                this._status('Per-scan override cleared.');
+            },
+            async saveDefault(name) {
+                const ov = this._read();
+                if (Object.keys(ov).length === 0) { this._status('Nothing to save — set at least one value.'); return; }
+                this._status('Saving…');
+                try {
+                    const res = await api.saveCheckConfig(name, ov);
+                    if (res && res.status === 'saved') {
+                        const check = CHECK_BY_NAME[name];
+                        if (check && check.config) {
+                            check.config.provenance = check.config.provenance || {};
+                            for (const [k, v] of Object.entries(ov)) {
+                                check.config[k] = v;
+                                check.config.provenance[k] = 'config';
+                            }
+                        }
+                        openCheckModal(name);  // re-render with the new baseline
+                        this._status('Saved as default (config.yaml). Comments are not preserved.');
+                    } else {
+                        this._status('Save failed: ' + (res?.detail || 'unknown error'));
+                    }
+                } catch (e) {
+                    this._status('Save failed: ' + e);
+                }
+            },
+            _markRow(name) {
+                const row = document.querySelector(`[data-check-row="${name}"]`);
+                if (row) row.classList.toggle('has-override', !!PENDING_OVERRIDES[name]);
+            },
+            _status(msg) {
+                const el = document.getElementById('cfg-status');
+                if (el) el.textContent = msg;
+            },
+        };
+
+        function refreshOverrideMarks() {
+            Object.keys(PENDING_OVERRIDES).forEach(name => {
+                const row = document.querySelector(`[data-check-row="${name}"]`);
+                if (row) row.classList.add('has-override');
+            });
+        }
+
+        async function loadPresets() {
+            try {
+                const data = await api.getScanPresets();
+                const sel = document.getElementById('preset-select');
+                (data.presets || []).forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.name;
+                    opt.textContent = p.name;
+                    opt.title = p.description || '';
+                    sel.appendChild(opt);
+                });
+            } catch (e) {
+                console.warn('Could not load presets:', e);
+            }
+        }
+
         // Exclusions state
         let exclusions = [];
 
@@ -431,10 +568,26 @@
             initCommon();
             await loadCheckSuites();
             renderSuites();
+            await loadPresets();
             await loadExistingScope();
             updateNavLinks();
             initChipInput();
             initModals();
+
+            // Show/hide config-disabled checks (re-fetches with include_disabled).
+            document.getElementById('toggle-disabled').addEventListener('change', async (e) => {
+                const selected = new Set(
+                    [...document.querySelectorAll('.suite-check-item input:checked')].map(i => i.id.replace('check-', ''))
+                );
+                await loadCheckSuites(e.target.checked);
+                renderSuites();
+                // Restore the operator's selections + override marks across the re-render.
+                document.querySelectorAll('.suite-check-item input').forEach(i => {
+                    if (!i.disabled) i.checked = selected.has(i.id.replace('check-', ''));
+                });
+                Object.keys(CHECK_SUITES).forEach(updateSuiteCount);
+                refreshOverrideMarks();
+            });
         });
 
         function renderSuites() {
@@ -458,13 +611,19 @@
                     <div class="suite-body">
                         <div class="suite-checks">
                             ${suite.checks.map(check => {
+                                const meta = CHECK_BY_NAME[check] || {};
                                 const isIntrusive = INTRUSIVE_CHECKS.has(check);
+                                const isDisabled = meta.enabled === false;
                                 const lockedClass = isIntrusive ? 'intrusive-locked' : '';
-                                const checked = isIntrusive ? '' : 'checked';
+                                const disabledClass = isDisabled ? 'check-config-disabled' : '';
+                                const checked = (isIntrusive || isDisabled) ? '' : 'checked';
+                                const boxDisabled = (isIntrusive || isDisabled) ? 'disabled' : '';
                                 return `
-                                <div class="suite-check-item ${lockedClass}" data-intrusive="${isIntrusive}">
-                                    <input type="checkbox" id="check-${check}" data-suite="${key}" ${checked} ${isIntrusive ? 'disabled' : ''}>
+                                <div class="suite-check-item ${lockedClass} ${disabledClass}" data-intrusive="${isIntrusive}" data-check-row="${check}">
+                                    <input type="checkbox" id="check-${check}" data-suite="${key}" ${checked} ${boxDisabled}>
                                     <label for="check-${check}">${check.replace(/_/g, ' ')}</label>
+                                    <span class="override-dot" title="Per-scan override set"></span>
+                                    <button type="button" class="check-info-btn" title="Details &amp; config" onclick="openCheckModal('${check}')">&#9432;</button>
                                 </div>`;
                             }).join('')}
                         </div>
@@ -703,6 +862,12 @@
                 e.preventDefault();
                 alert('Preset management coming soon!');
             });
+
+            // Check detail modal
+            document.getElementById('close-check-modal').addEventListener('click', closeCheckModal);
+            document.getElementById('check-modal-overlay').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) closeCheckModal();
+            });
         }
 
         function closeWindowModal() {
@@ -877,7 +1042,13 @@
                 scan_behavior: scanBehavior,
             });
 
-            const startResult = await api.startScan();
+            // Layer-6 scan-time inputs: a named preset + per-check overrides (6b).
+            const startBody = {};
+            const presetVal = document.getElementById('preset-select')?.value;
+            if (presetVal) startBody.preset = presetVal;
+            if (Object.keys(PENDING_OVERRIDES).length) startBody.check_overrides = PENDING_OVERRIDES;
+
+            const startResult = await api.startScan(startBody);
 
             // Pin the new scan_id into the ScanSelector and the URL so
             // scan.html polls the right session from first paint, instead

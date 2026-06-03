@@ -60,7 +60,15 @@ const api = {
     async getViolations() { return (await fetch('/api/v1/compliance/violations')).json(); },
     async generateComplianceReport() { return (await fetch('/api/v1/compliance/report', { method: 'POST' })).json(); },
     async getComplianceReport() { return (await fetch('/api/v1/compliance/report')).json(); },
-    async startScan() { return (await fetch('/api/v1/scan', { method: 'POST' })).json(); },
+    async startScan(body = null) {
+        // Optional body: { preset, check_overrides, checks, suites, port_profile }.
+        const opts = { method: 'POST' };
+        if (body && Object.keys(body).length) {
+            opts.headers = { 'Content-Type': 'application/json' };
+            opts.body = JSON.stringify(body);
+        }
+        return (await fetch('/api/v1/scan', opts)).json();
+    },
     async pauseScan(scanId = null) {
         const qs = scanId ? `?scan_id=${encodeURIComponent(scanId)}` : '';
         return (await fetch(`/api/v1/scan/pause${qs}`, { method: 'POST' })).json();
@@ -90,7 +98,19 @@ const api = {
         const qs = scanId ? `?scan_id=${encodeURIComponent(scanId)}` : '';
         return (await fetch(`/api/v1/observations/by-host${qs}`)).json();
     },
-    async getChecks() { return (await fetch('/api/v1/checks')).json(); },
+    async getChecks(includeDisabled = false) {
+        const qs = includeDisabled ? '?include_disabled=true' : '';
+        return (await fetch(`/api/v1/checks${qs}`)).json();
+    },
+    async getScanPresets() { return (await fetch('/api/v1/scan/presets')).json(); },
+    async saveCheckConfig(checkName, override) {
+        // Persist tunable overrides into the check's config.yaml (layer 3).
+        return (await fetch(`/api/v1/checks/${encodeURIComponent(checkName)}/config`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(override),
+        })).json();
+    },
     async analyzeChains(scanId = null) {
         const qs = scanId ? `?scan_id=${encodeURIComponent(scanId)}` : '';
         return (await fetch(`/api/v1/chains/analyze${qs}`, { method: 'POST' })).json();
@@ -661,7 +681,78 @@ function getCheckModalContent(check) {
             </ul>
         </div>` : ''}
         ${renderFrameworkBadges(check.frameworks)}
+        ${getCheckConfigSection(check)}
     `;
+}
+
+// ─── Check Config Section (resolved knobs + provenance + per-check editing) ───
+// Read-only everywhere; editable only when a launcher page installs
+// `window.CheckOverrideEditor` (index.html). on scan.html it stays informational.
+const _CFG_KNOBS = [
+    ['timeout_seconds', 'Timeout (s)', '0.1'],
+    ['requests_per_second', 'Requests / sec', '0.1'],
+    ['retry_count', 'Retry count', '1'],
+    ['delay_between_targets', 'Delay between targets (s)', '0.1'],
+];
+
+function getCheckConfigSection(check) {
+    const cfg = check.config || {};
+    const prov = cfg.provenance || {};
+    const editor = window.CheckOverrideEditor;
+    const editable = !!editor && check.enabled !== false && !check.simulated;
+    const pending = editable ? (editor.getPending(check.name) || {}) : {};
+
+    const rows = _CFG_KNOBS.map(([key, label, step]) => {
+        const baseline = cfg[key];
+        const layer = prov[key] || '—';
+        if (editable) {
+            const pv = pending[key];
+            return `<div class="cfg-row">
+                <label class="cfg-label" for="cfg-${key}">${label} <span class="cfg-prov">[${layer}]</span></label>
+                <input class="cfg-input" id="cfg-${key}" type="number" min="0" step="${step}"
+                    placeholder="${baseline ?? ''}" value="${pv ?? ''}">
+            </div>`;
+        }
+        return `<div class="cfg-row"><span class="cfg-label">${label}</span>
+            <span class="cfg-value">${baseline ?? '—'} <span class="cfg-prov">[${layer}]</span></span></div>`;
+    }).join('');
+
+    const ocLayer = prov.on_critical || '—';
+    const ocBaseline = cfg.on_critical ?? '—';
+    let ocRow;
+    if (editable) {
+        const sel = pending.on_critical || '';
+        const opts = ['', 'annotate', 'skip_downstream', 'stop', 'inherit'];
+        ocRow = `<div class="cfg-row">
+            <label class="cfg-label" for="cfg-on_critical">On critical <span class="cfg-prov">[${ocLayer}]</span></label>
+            <select class="cfg-input" id="cfg-on_critical">
+                ${opts.map(o => `<option value="${o}" ${o === sel ? 'selected' : ''}>${o || `(baseline: ${ocBaseline})`}</option>`).join('')}
+            </select>
+        </div>`;
+    } else {
+        ocRow = `<div class="cfg-row"><span class="cfg-label">On critical</span>
+            <span class="cfg-value">${ocBaseline} <span class="cfg-prov">[${ocLayer}]</span></span></div>`;
+    }
+
+    const actions = editable ? `
+        <div class="cfg-actions">
+            <button type="button" class="cfg-btn" onclick="CheckOverrideEditor.applyForScan('${check.name}')">Use for this scan</button>
+            <button type="button" class="cfg-btn" onclick="CheckOverrideEditor.saveDefault('${check.name}')">Save as default</button>
+            <button type="button" class="cfg-btn cfg-btn-text" onclick="CheckOverrideEditor.clearPending('${check.name}')">Clear</button>
+        </div>
+        <div class="cfg-hint">"Use for this scan" applies to the next scan only (layer 6b). "Save as default" rewrites this check's config.yaml — comments are not preserved.</div>
+        <div class="cfg-hint" id="cfg-status"></div>` : '';
+
+    const disabledNote = check.enabled === false
+        ? `<div class="cfg-hint cfg-disabled">Disabled${check.reason ? ' — ' + check.reason : ''}</div>`
+        : '';
+
+    return `<div class="modal-section">
+        <div class="modal-section-title">Configuration <span class="cfg-prov">(value [source])</span></div>
+        <div class="modal-section-content">
+            ${disabledNote}${rows}${ocRow}${actions}
+        </div>
+    </div>`;
 }
 
 // ─── Observation Modal Content ─────────────────────────────────────
