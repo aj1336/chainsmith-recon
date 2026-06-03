@@ -27,13 +27,20 @@ from __future__ import annotations
 import ast
 import importlib
 import logging
+import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
 
 from app.components.config_models import ComponentConfig, SuiteConfig
-from app.components.config_resolver import ENV_DELIM, ConfigResolver
+from app.components.config_resolver import (
+    ENV_DELIM,
+    ConfigResolver,
+    active_env_overrides,
+    detect_env_problems,
+)
 from app.components.contracts import contract_model_for
 
 logger = logging.getLogger(__name__)
@@ -135,10 +142,22 @@ _CALLER_CONSTRUCTED: set[str] = {"advisor", "gate"}
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def verify_contracts(root: Path, component_type: ComponentType = "check") -> list[Violation]:
+def verify_contracts(
+    root: Path,
+    component_type: ComponentType = "check",
+    env: Mapping[str, str] | None = None,
+) -> list[Violation]:
     """Validate every `contract.yaml` under `root` and folder hygiene (§6, §8.6).
 
     Never imports an entry module. Accumulates and returns all violations.
+
+    As of 56.16 this also validates the tunable-config side (`config.yaml`,
+    `suite.yaml`) against their schemas and — for the check root only — the
+    per-component env-override namespace (`CHAINSMITH__<C>__<P>`): a var that
+    names no known (check, knob) pair or carries an uncoercible value is a hard
+    violation, so a typo'd deployment override fails at load instead of silently
+    doing nothing. `env` defaults to `os.environ`; inject it in tests. CI sets no
+    such vars, so the env pass is a clean no-op there.
     """
     root = Path(root)
     violations: list[Violation] = []
@@ -230,6 +249,82 @@ def verify_contracts(root: Path, component_type: ComponentType = "check") -> lis
                     "test_*.py under a component root must live in <component>/tests/",
                 )
             )
+
+    # ── Pass 4: tunable-config schema (config.yaml + suite.yaml) (56.16) ──
+    # The loader re-parses these during instantiation, but folding validation here
+    # means the shared gate (loader + CI + `dev verify-contracts`) catches a bad
+    # config the same way it catches a bad contract — accumulated, not a raw
+    # pydantic error thrown mid-build.
+    violations.extend(_verify_tunable_config(root, [comp_dir for comp_dir, _, _ in entries]))
+
+    # ── Pass 5: env-override namespace (check root only) (56.16) ──
+    # The env knobs are consumed only by checks (via ConfigResolver in
+    # discover_components); other component types have their own registries.
+    if component_type == "check":
+        component_names = [
+            (model.name if model is not None else raw.get("name")) for _, raw, model in entries
+        ]
+        component_names = [n for n in component_names if n]
+        active_env = os.environ if env is None else env
+        for _key, code, message in detect_env_problems(component_names, active_env):
+            violations.append(Violation(root, code, message))
+
+    return violations
+
+
+def _verify_tunable_config(root: Path, comp_dirs: list[Path]) -> list[Violation]:
+    """Validate each component's `config.yaml` and each suite's `suite.yaml` against
+    their Pydantic schemas (§5). Missing files are fine (defaults apply); only a
+    present-but-invalid file is a violation. Accumulates, never imports."""
+    violations: list[Violation] = []
+
+    for comp_dir in comp_dirs:
+        cfg_path = comp_dir / "config.yaml"
+        if not cfg_path.exists():
+            continue
+        try:
+            raw = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+        except yaml.YAMLError as e:
+            violations.append(
+                Violation(comp_dir, "config-yaml-parse", f"config.yaml unparseable: {e}")
+            )
+            continue
+        if not isinstance(raw, dict):
+            violations.append(
+                Violation(comp_dir, "config-yaml-parse", "config.yaml is not a mapping")
+            )
+            continue
+        try:
+            ComponentConfig(**raw)
+        except Exception as e:  # pydantic ValidationError (extra/type/enum)
+            for line in str(e).splitlines():
+                violations.append(Violation(comp_dir, "config-schema", line.strip()))
+
+    # suite.yaml lives one level under root (root/<suite>/suite.yaml). Derive the
+    # suite dirs from the component folders so non-suited trees (agents) are a no-op.
+    suite_dirs = sorted({root / comp_dir.relative_to(root).parts[0] for comp_dir in comp_dirs})
+    for suite_dir in suite_dirs:
+        suite_yaml = suite_dir / "suite.yaml"
+        if not suite_yaml.exists():
+            continue
+        try:
+            raw = yaml.safe_load(suite_yaml.read_text(encoding="utf-8")) or {}
+        except yaml.YAMLError as e:
+            violations.append(
+                Violation(suite_dir, "suite-yaml-parse", f"suite.yaml unparseable: {e}")
+            )
+            continue
+        if not isinstance(raw, dict):
+            violations.append(
+                Violation(suite_dir, "suite-yaml-parse", "suite.yaml is not a mapping")
+            )
+            continue
+        raw.setdefault("name", suite_dir.name)
+        try:
+            SuiteConfig(**raw)
+        except Exception as e:
+            for line in str(e).splitlines():
+                violations.append(Violation(suite_dir, "suite-schema", line.strip()))
 
     return violations
 
@@ -413,4 +508,13 @@ def discover_components(root: Path, component_type: ComponentType = "check") -> 
 
     built.sort(key=lambda t: (t[0], t[1]))
     logger.info("Discovered %d %s component(s)", len(built), component_type)
+
+    # Startup surfacing (56.16): one-line summary of which per-component env
+    # overrides are actually in effect. Checks-only (the lone env-knob consumer).
+    if component_type == "check":
+        overrides = active_env_overrides([name for _, name, _ in built], os.environ)
+        if overrides:
+            summary = ", ".join(f"{name}.{param}={value}" for name, param, value in overrides)
+            logger.info("Active env config override(s) [%d]: %s", len(overrides), summary)
+
     return [inst for _, _, inst in built]

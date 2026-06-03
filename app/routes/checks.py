@@ -37,6 +37,17 @@ def _disabled_check_entry(meta) -> dict:
         "suite": meta.suite,
         "intrusive": False,
         "on_critical": meta.on_critical,
+        # Shape parity with enabled entries (56.16). Disabled checks are never
+        # imported, so the numeric knobs aren't resolved — only on_critical (from
+        # the import-free metadata) is known; provenance is unavailable.
+        "config": {
+            "timeout_seconds": None,
+            "requests_per_second": None,
+            "retry_count": None,
+            "delay_between_targets": None,
+            "on_critical": meta.on_critical,
+            "provenance": {},
+        },
         "enabled": False,
     }
 

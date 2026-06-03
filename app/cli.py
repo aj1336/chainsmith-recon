@@ -2369,6 +2369,49 @@ def dev_diff_registry(save_baseline: str | None, compare_to: str | None, rename_
     sys.exit(2)
 
 
+@dev_group.command("show-config")
+@click.option("--check", "check_name", default=None, help="Limit to a single check by name")
+@click.option("--root", default="app/checks", help="Component type root to resolve")
+def dev_show_config(check_name: str | None, root: str):
+    """Show each check's resolved tunable config + per-value layer attribution (56.16).
+
+    Resolves the §5.1 load-time baseline (class default → suite.yaml → config.yaml →
+    env) and prints, per knob, the winning value and the layer it came from. Also
+    lists the per-component env overrides currently in effect. Offline; no server.
+    """
+    _require_source_tree()
+    import os
+
+    from app.component_loader import discover_components
+    from app.components.config_resolver import active_env_overrides
+
+    checks = discover_components(Path(root), "check")
+    if check_name:
+        checks = [c for c in checks if c.name == check_name]
+        if not checks:
+            click.echo(click.style(f"No enabled check named '{check_name}'.", fg="red"), err=True)
+            sys.exit(1)
+
+    overrides = active_env_overrides([c.name for c in checks], os.environ)
+    if overrides:
+        click.echo(click.style(f"Active env overrides ({len(overrides)}):", fg="yellow"))
+        for name, param, value in overrides:
+            click.echo(f"  {name}.{param} = {value}")
+    else:
+        click.echo(click.style("Active env overrides: none", fg="green"))
+    click.echo("")
+
+    knobs = ("timeout_seconds", "requests_per_second", "retry_count", "delay_between_targets")
+    for check in sorted(checks, key=lambda c: c.name):
+        prov = getattr(check, "config_provenance", {}) or {}
+        click.echo(click.style(check.name, fg="cyan", bold=True))
+        for knob in knobs:
+            click.echo(f"  {knob:24} {getattr(check, knob)!r:>10}  [{prov.get(knob, '?')}]")
+        click.echo(
+            f"  {'on_critical':24} {check.on_critical!r:>10}  [{prov.get('on_critical', '?')}]"
+        )
+
+
 @dev_group.command("new-check")
 @click.option("--name", required=True, help="Check slug (folder + contract.name)")
 @click.option("--suite", required=True, help="Suite folder (web/network/ai/...)")

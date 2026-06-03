@@ -13,7 +13,7 @@ may safely retune (§5.3 ownership rule). The two config systems
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -84,3 +84,10 @@ class ResolvedConfig:
     requests_per_second: float
     retry_count: int
     delay_between_targets: float
+
+    # Per-value layer attribution (Phase 56.16): knob/on_critical → the precedence
+    # layer (§5.1) that won it — "class_default" | "suite" | "config" | "env"
+    # (on_critical also: "default"). Surfaced read-only on /api/v1/checks +
+    # `dev show-config`; never affects resolution. Defaulted so the few non-resolver
+    # construction sites (tests) stay valid.
+    provenance: dict[str, str] = field(default_factory=dict)

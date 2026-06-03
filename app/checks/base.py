@@ -236,6 +236,10 @@ class BaseCheck(BaseComponent, ABC):
     on_critical: str = "annotate"
     enabled: bool = True
 
+    # Per-value config provenance (56.16) — filled by from_config from the resolved
+    # baseline; empty for checks built bare (e.g. simulations/tests). Read-only.
+    config_provenance: dict = {}
+
     # ─── Conditions ─────────────────────────────────────────────
     conditions: list[CheckCondition] = []
 
@@ -308,6 +312,8 @@ class BaseCheck(BaseComponent, ABC):
         inst.delay_between_targets = config.delay_between_targets
         inst.enabled = config.enabled
         inst.on_critical = config.on_critical
+        # Per-value layer attribution (56.16) — surfaced read-only by get_check_info.
+        inst.config_provenance = dict(config.provenance)
         return inst
 
     def set_scope_validator(self, validator: Callable[[str], bool]):

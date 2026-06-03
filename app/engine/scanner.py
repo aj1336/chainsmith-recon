@@ -57,6 +57,16 @@ def get_check_info(check) -> dict:
         "produces": getattr(check, "produces", []),
         "suite": getattr(check, "suite", None) or infer_suite(check.name),
         "intrusive": getattr(check, "intrusive", False),
+        # Resolved tunable config + per-value layer attribution (56.16). Read-only
+        # surfacing of the §5.1 load-time baseline; feeds the 56.17 WebUI modal.
+        "config": {
+            "timeout_seconds": getattr(check, "timeout_seconds", None),
+            "requests_per_second": getattr(check, "requests_per_second", None),
+            "retry_count": getattr(check, "retry_count", None),
+            "delay_between_targets": getattr(check, "delay_between_targets", None),
+            "on_critical": getattr(check, "on_critical", None),
+            "provenance": dict(getattr(check, "config_provenance", {}) or {}),
+        },
     }
 
 
