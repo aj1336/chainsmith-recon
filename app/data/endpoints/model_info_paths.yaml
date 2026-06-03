@@ -1,0 +1,19 @@
+# Model info/version/config endpoint candidates probed by ai_model_info_check.
+# Flat list of URL paths; order preserved.
+- /v1/models
+- /models
+- /model/info
+- /model-info
+- /api/models
+- /api/v1/models
+- /api/tags
+- /api/show
+- /internal/model-admin
+- /debug/model
+- /admin/models
+- /health
+- /version
+- /info
+- /config
+- /api/config
+- /settings

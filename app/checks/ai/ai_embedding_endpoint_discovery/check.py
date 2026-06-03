@@ -8,6 +8,7 @@ from typing import Any
 
 from app.checks.base import CheckCondition, CheckResult, Service, ServiceIteratingCheck
 from app.lib.ai_helpers import fmt_endpoint_probe_evidence
+from app.lib.datafiles import load_data
 from app.lib.http import AsyncHttpClient, HttpConfig
 from app.lib.observations import build_observation
 
@@ -26,7 +27,9 @@ class EmbeddingEndpointCheck(ServiceIteratingCheck):
     references = ["OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure"]
     techniques = ["endpoint discovery", "embedding extraction"]
 
-    EMBEDDING_PATHS = [
+    # Shipped list: app/data/endpoints/embedding_paths.yaml (operator-editable).
+    # This inline copy is the fallback if missing (Phase 56.13 / Wave 2).
+    _FALLBACK_EMBEDDING_PATHS = [
         "/v1/embeddings",
         "/embeddings",
         "/api/embeddings",
@@ -41,6 +44,7 @@ class EmbeddingEndpointCheck(ServiceIteratingCheck):
         "/api/search",
         "/feature-extraction",
     ]
+    EMBEDDING_PATHS = load_data("endpoints/embedding_paths.yaml", _FALLBACK_EMBEDDING_PATHS)
 
     async def check_service(self, service: Service, context: dict[str, Any]) -> CheckResult:
         result = CheckResult(success=True)

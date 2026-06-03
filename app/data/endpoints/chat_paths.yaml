@@ -1,0 +1,21 @@
+# LLM chat/completion endpoint candidates probed by ai_llm_endpoint_discovery.
+# Flat list of URL paths; order preserved.
+- /v1/chat/completions
+- /v1/completions
+- /chat/completions
+- /completions
+- /v1/messages
+- /messages
+- /api/generate
+- /api/chat
+- /chat
+- /inference
+- /predict
+- /api/inference
+- /api/predict
+- /invoke
+- /stream
+- /batch
+- /generate
+- /v1/generate
+- /generate_stream

@@ -7,6 +7,7 @@ Discover endpoints that expose model information, versions, and configuration.
 from typing import Any
 
 from app.checks.base import CheckCondition, CheckResult, Service, ServiceIteratingCheck
+from app.lib.datafiles import load_data
 from app.lib.evidence import fmt_endpoint_evidence
 from app.lib.http import AsyncHttpClient, HttpConfig
 from app.lib.observations import make_observation_id_hashed
@@ -27,7 +28,9 @@ class ModelInfoCheck(ServiceIteratingCheck):
     references = ["OWASP LLM Top 10 - LLM06 Sensitive Information Disclosure"]
     techniques = ["API enumeration", "model fingerprinting", "configuration discovery"]
 
-    MODEL_PATHS = [
+    # Shipped list: app/data/endpoints/model_info_paths.yaml (operator-editable).
+    # This inline copy is the fallback if missing (Phase 56.13 / Wave 2).
+    _FALLBACK_MODEL_PATHS = [
         "/v1/models",
         "/models",
         "/model/info",
@@ -46,6 +49,7 @@ class ModelInfoCheck(ServiceIteratingCheck):
         "/api/config",
         "/settings",
     ]
+    MODEL_PATHS = load_data("endpoints/model_info_paths.yaml", _FALLBACK_MODEL_PATHS)
 
     SENSITIVE_FIELDS = [
         "api_key",

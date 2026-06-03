@@ -20,10 +20,13 @@ import socket
 from typing import Any
 
 from app.checks.base import BaseCheck, CheckResult
+from app.lib.datafiles import load_wordlist
 from app.lib.observations import build_observation
 
-# Common subdomain wordlist for active enumeration
-DEFAULT_WORDLIST = [
+# Common subdomain wordlist for active enumeration. The shipped list lives in
+# app/data/wordlists/subdomains.txt (operator-editable, per-engagement); this
+# inline copy is the fallback if that file is missing (Phase 56.13 / Wave 2).
+_FALLBACK_WORDLIST = [
     "www",
     "api",
     "chat",
@@ -58,6 +61,8 @@ DEFAULT_WORDLIST = [
     "tools",
     "embeddings",
 ]
+
+DEFAULT_WORDLIST = load_wordlist("wordlists/subdomains.txt", _FALLBACK_WORDLIST)
 
 
 class DnsEnumerationCheck(BaseCheck):

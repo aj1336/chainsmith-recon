@@ -1,0 +1,15 @@
+# Embedding/vector endpoint candidates probed by ai_embedding_endpoint_discovery.
+# Flat list of URL paths; order preserved.
+- /v1/embeddings
+- /embeddings
+- /api/embeddings
+- /api/embed
+- /embed
+- /encode
+- /api/encode
+- /api/vectors
+- /vectors
+- /similarity
+- /search
+- /api/search
+- /feature-extraction

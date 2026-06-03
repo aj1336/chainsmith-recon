@@ -1,0 +1,30 @@
+# MCP resource-template injection payloads for mcp_template_injection.
+# Mapping of injection type -> list of [payload, description] pairs.
+sql:
+- - ''' OR ''1''=''1'
+  - SQL tautology
+- - 1; SELECT 1--
+  - SQL statement termination
+- - UNION SELECT NULL--
+  - SQL UNION injection
+path_traversal:
+- - ../../etc/passwd
+  - relative path traversal
+- - ..\..\windows\system32\drivers\etc\hosts
+  - Windows traversal
+- - '%2e%2e%2f%2e%2e%2fetc%2fpasswd'
+  - URL-encoded traversal
+command:
+- - ; echo chainsmith-probe
+  - command chaining
+- - '| echo chainsmith-probe'
+  - pipe injection
+- - '`echo chainsmith-probe`'
+  - backtick injection
+template_nesting:
+- - '{other_param}'
+  - recursive template
+- - ${env:PATH}
+  - environment variable expansion
+- - '{{7*7}}'
+  - template expression

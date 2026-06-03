@@ -21,11 +21,14 @@ from typing import Any
 
 from app.checks.base import BaseCheck, CheckCondition, CheckResult
 from app.checks.mcp.invocation_safety import cap_response
+from app.lib.datafiles import load_data
 from app.lib.http import AsyncHttpClient, HttpConfig
 from app.lib.observations import build_observation
 
-# Injection payloads by type
-INJECTION_PAYLOADS = {
+# Injection payloads by type. Shipped list: app/data/payloads/mcp_template_injection.yaml
+# (operator-editable); this inline copy is the fallback (Phase 56.13 / Wave 2). The YAML
+# stores each payload as a [value, description] pair, unpacked like the original tuples.
+_FALLBACK_INJECTION_PAYLOADS = {
     "sql": [
         ("' OR '1'='1", "SQL tautology"),
         ("1; SELECT 1--", "SQL statement termination"),
@@ -47,6 +50,7 @@ INJECTION_PAYLOADS = {
         ("{{7*7}}", "template expression"),
     ],
 }
+INJECTION_PAYLOADS = load_data("payloads/mcp_template_injection.yaml", _FALLBACK_INJECTION_PAYLOADS)
 
 # URI template parameter pattern: {param_name}
 TEMPLATE_PARAM_RE = re.compile(r"\{(\w+)\}")

@@ -29,6 +29,7 @@ References:
 from typing import Any
 
 from app.checks.base import CheckCondition, CheckResult, Service, ServiceIteratingCheck
+from app.lib.datafiles import load_data
 from app.lib.http import AsyncHttpClient, HttpConfig
 from app.lib.observations import build_observation
 from app.lib.payloads import get_payloads_for_check
@@ -53,8 +54,12 @@ def _get_goal_injection_payloads() -> list[dict]:
         return FALLBACK_PAYLOADS
 
 
-# Fallback payloads if library unavailable
-FALLBACK_PAYLOADS = [
+# Fallback payloads if library unavailable. The shipped copies live in
+# app/data/payloads/agent_goal_injection.yaml (keys `fallback` + `framework`,
+# operator-editable); these inline copies are the fallback if that file is
+# missing (Phase 56.13 / Wave 2). FALLBACK_PAYLOADS / FRAMEWORK_PAYLOADS below
+# are resolved from the data file (or these inline defaults).
+_INLINE_FALLBACK_PAYLOADS = [
     {
         "id": "ignore_previous",
         "category": "direct_override",
@@ -85,7 +90,7 @@ FALLBACK_PAYLOADS = [
 ]
 
 # Framework-specific payload adaptations (Phase 12 enhancement)
-FRAMEWORK_PAYLOADS = {
+_INLINE_FRAMEWORK_PAYLOADS = {
     "langserve": [
         {
             "id": "langserve_schema_bypass",
@@ -132,6 +137,15 @@ FRAMEWORK_PAYLOADS = {
         },
     ],
 }
+
+# Resolve the shipped data file (single source for both sets); fall back to the
+# inline copies above if the file is missing/unparseable (Phase 56.13 / Wave 2).
+_GOAL_INJECTION_DATA = load_data(
+    "payloads/agent_goal_injection.yaml",
+    {"fallback": _INLINE_FALLBACK_PAYLOADS, "framework": _INLINE_FRAMEWORK_PAYLOADS},
+)
+FALLBACK_PAYLOADS = _GOAL_INJECTION_DATA["fallback"]
+FRAMEWORK_PAYLOADS = _GOAL_INJECTION_DATA["framework"]
 
 # Response patterns that indicate potential hijacking
 HIJACK_INDICATORS = {

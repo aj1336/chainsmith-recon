@@ -8,6 +8,7 @@ from typing import Any
 
 from app.checks.base import CheckCondition, CheckResult, Service, ServiceIteratingCheck
 from app.lib.ai_helpers import fmt_endpoint_probe_evidence
+from app.lib.datafiles import load_data
 from app.lib.http import AsyncHttpClient, HttpConfig
 from app.lib.observations import build_observation
 
@@ -26,7 +27,9 @@ class LLMEndpointCheck(ServiceIteratingCheck):
     references = ["OWASP LLM Top 10 - LLM01 Prompt Injection"]
     techniques = ["endpoint discovery", "API enumeration"]
 
-    CHAT_PATHS = [
+    # Shipped list: app/data/endpoints/chat_paths.yaml (operator-editable). This
+    # inline copy is the fallback if that file is missing (Phase 56.13 / Wave 2).
+    _FALLBACK_CHAT_PATHS = [
         "/v1/chat/completions",
         "/v1/completions",
         "/chat/completions",
@@ -47,6 +50,7 @@ class LLMEndpointCheck(ServiceIteratingCheck):
         "/v1/generate",
         "/generate_stream",
     ]
+    CHAT_PATHS = load_data("endpoints/chat_paths.yaml", _FALLBACK_CHAT_PATHS)
 
     async def check_service(self, service: Service, context: dict[str, Any]) -> CheckResult:
         result = CheckResult(success=True)

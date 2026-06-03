@@ -1,0 +1,35 @@
+# Common subdomain prefixes for active DNS enumeration.
+# Used by network_dns_enumeration. One prefix per line; '#' lines ignored.
+www
+api
+chat
+app
+admin
+portal
+auth
+login
+docs
+dev
+staging
+test
+internal
+backend
+frontend
+cdn
+static
+media
+mail
+smtp
+ftp
+vpn
+remote
+mcp
+agent
+rag
+cache
+vector
+ml
+ai
+llm
+tools
+embeddings
