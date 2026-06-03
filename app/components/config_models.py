@@ -52,6 +52,7 @@ class ComponentConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = True  # false → loader skips the component
+    reason: str = ""  # optional human note (e.g. why disabled); surfaced in introspection (56.15)
     on_critical: OnCritical = "annotate"
     defaults: Defaults = Field(default_factory=Defaults)
     parameters: dict[str, object] = Field(default_factory=dict)

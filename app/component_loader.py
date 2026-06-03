@@ -292,6 +292,78 @@ def _load_suite_config(root: Path, suite: str) -> SuiteConfig | None:
     return SuiteConfig(**raw)
 
 
+@dataclass(frozen=True)
+class ComponentMeta:
+    """Lightweight, import-free metadata for one component (Phase 56.15).
+
+    Unlike `discover_components`, this surfaces DISABLED components too (and never
+    imports an entry module), so the API/WebUI can list every check with an
+    enable/disable toggle (§17 D7/D8). `enabled` is the *effective* value (the
+    component's own flag AND its suite's `suite.yaml` enabled).
+    """
+
+    name: str
+    suite: str
+    component_type: str
+    enabled: bool
+    reason: str  # config.yaml `reason` (e.g. why disabled), "" if unset
+    on_critical: str  # resolved against suite.yaml (no class default — import-free)
+    description: str
+
+
+def discover_component_metadata(
+    root: Path, component_type: ComponentType = "check"
+) -> list[ComponentMeta]:
+    """List metadata for every component under `root`, INCLUDING disabled ones.
+
+    Reads `contract.yaml` + `config.yaml` (+ `suite.yaml`) only — never imports an
+    entry module — so it is safe to call for components the loader would skip.
+    Malformed contracts are silently omitted here (the `verify_contracts` gate is
+    the place that reports them); this function is for display, not validation.
+    """
+    root = Path(root)
+    out: list[ComponentMeta] = []
+    if not root.exists():
+        return out
+
+    model_cls = contract_model_for(component_type)
+    for contract_path in sorted(root.rglob("contract.yaml")):
+        comp_dir = contract_path.parent
+        try:
+            contract = model_cls(
+                **(yaml.safe_load(contract_path.read_text(encoding="utf-8")) or {})
+            )
+        except Exception:
+            continue  # malformed — verify_contracts surfaces it; skip for display
+
+        cfg_path = comp_dir / "config.yaml"
+        if cfg_path.exists():
+            comp_cfg = ComponentConfig(
+                **(yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {})
+            )
+        else:
+            comp_cfg = ComponentConfig()
+
+        suite = comp_dir.relative_to(root).parts[0]
+        suite_cfg = _load_suite_config(root, suite)
+        suite_enabled = suite_cfg.enabled if suite_cfg is not None else True
+
+        out.append(
+            ComponentMeta(
+                name=contract.name,
+                suite=suite,
+                component_type=component_type,
+                enabled=comp_cfg.enabled and suite_enabled,
+                reason=comp_cfg.reason,
+                on_critical=ConfigResolver._resolve_on_critical(comp_cfg.on_critical, suite_cfg),
+                description=getattr(contract, "description", "") or "",
+            )
+        )
+
+    out.sort(key=lambda m: (m.suite, m.name))
+    return out
+
+
 def discover_components(root: Path, component_type: ComponentType = "check") -> list:
     """Discover, validate, and instantiate every enabled component under `root` (§6).
 

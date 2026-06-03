@@ -284,8 +284,10 @@ class TestLauncherSkipDownstream:
         assert "llm_endpoint" in launcher.skipped
 
     @pytest.mark.asyncio
-    async def test_same_suite_not_skipped(self):
-        """Checks in the same suite are NOT skipped."""
+    async def test_non_dependent_not_skipped(self):
+        """Only DAG dependents of the critical check are skipped (Phase 56.15:
+        skip_downstream is dependency-based, not suite-based). An independent
+        check — one with no condition on the critical check's output — still runs."""
         check1 = FakeCheck(
             name="web_header_analysis",
             produces=["header_observations"],
@@ -294,9 +296,8 @@ class TestLauncherSkipDownstream:
             ],
             _outputs={"header_observations": True},
         )
-        check2 = FakeCheck(
-            name="web_path_probe",
-            conditions=[CheckCondition("header_observations", "truthy")],
+        independent = FakeCheck(
+            name="web_path_probe",  # no condition on header_observations → not a dependent
             _observations=[
                 make_observation(
                     title="Path found",
@@ -308,13 +309,13 @@ class TestLauncherSkipDownstream:
         )
 
         context = {}
-        launcher = CheckLauncher([check1, check2], context)
+        launcher = CheckLauncher([check1, independent], context)
         prefs = _make_prefs(on_critical="skip_downstream")
 
         with patch("app.preferences.get_preferences", return_value=prefs):
             observations = await launcher.run_all()
 
-        # Both are web suite -- path_probe should NOT be skipped
+        # web_path_probe doesn't depend on the critical check → NOT skipped
         assert len(observations) == 2
         assert "web_path_probe" not in launcher.skipped
 
@@ -485,6 +486,79 @@ class TestLauncherPerSuiteOverride:
             await launcher.run_all()
 
         assert launcher.scan_stopped is True
+
+
+# ─── Per-check on_critical (Phase 56.15) ─────────────────────────────────
+
+
+class TestPerCheckOnCritical:
+    """A check's own on_critical (from its config.yaml) wins over the legacy
+    suite-level preference; a check left at the default 'annotate' defers to it."""
+
+    @pytest.mark.asyncio
+    async def test_per_check_stop_overrides_annotate_pref(self):
+        producer = FakeCheck(
+            name="web_x",
+            _observations=[make_critical_observation(host="t.com", check_name="web_x")],
+        )
+        producer.on_critical = "stop"  # explicit per-check policy
+        follower = FakeCheck(name="web_y")
+        launcher = CheckLauncher([producer, follower], {})
+        prefs = _make_prefs(on_critical="annotate")  # suite pref says annotate
+
+        with patch("app.preferences.get_preferences", return_value=prefs):
+            await launcher.run_all()
+
+        assert launcher.scan_stopped is True  # per-check stop wins over the pref
+        assert "web_y" not in launcher.completed
+
+    @pytest.mark.asyncio
+    async def test_per_check_skip_downstream_overrides_annotate_pref(self):
+        producer = FakeCheck(
+            name="network_scan",
+            produces=["services"],
+            _observations=[make_critical_observation(host="t.com", check_name="network_scan")],
+            _outputs={"services": True},
+        )
+        producer.on_critical = "skip_downstream"
+        dependent = FakeCheck(name="web_headers", conditions=[CheckCondition("services", "truthy")])
+        launcher = CheckLauncher([producer, dependent], {})
+        prefs = _make_prefs(on_critical="annotate")
+
+        with patch("app.preferences.get_preferences", return_value=prefs):
+            await launcher.run_all()
+
+        assert "web_headers" in launcher.skipped
+        assert "skip_downstream" in launcher.skip_reasons["web_headers"]
+
+    def test_resolve_default_check_falls_back_to_pref(self):
+        fc = FakeCheck(name="web_x")  # no explicit on_critical → default 'annotate'
+        launcher = CheckLauncher([fc], {})
+        with patch.object(launcher, "_resolve_on_critical", return_value="stop"):
+            assert launcher._resolve_check_on_critical("web_x", "web") == "stop"
+
+    def test_resolve_explicit_check_wins(self):
+        fc = FakeCheck(name="web_x")
+        fc.on_critical = "skip_downstream"
+        launcher = CheckLauncher([fc], {})
+        # Even though the pref would say stop, the explicit per-check value wins.
+        with patch.object(launcher, "_resolve_on_critical", return_value="stop"):
+            assert launcher._resolve_check_on_critical("web_x", "web") == "skip_downstream"
+
+
+class TestDependentsGraph:
+    """The launcher's produces/conditions dependency graph (Phase 56.15)."""
+
+    def test_dependents_map_and_transitive(self):
+        a = FakeCheck(name="a", produces=["x"])
+        b = FakeCheck(name="b", produces=["y"], conditions=[CheckCondition("x", "truthy")])
+        c = FakeCheck(name="c", conditions=[CheckCondition("y", "truthy")])
+        d = FakeCheck(name="d")  # independent
+        launcher = CheckLauncher([a, b, c, d], {})
+        assert launcher._dependents_map["a"] == {"b"}
+        assert launcher._dependents_map["b"] == {"c"}
+        assert launcher._transitive_dependents("a") == {"b", "c"}
+        assert launcher._transitive_dependents("d") == set()
 
 
 # ─── Intrusive Gating ───────────────────────────────────────────────────

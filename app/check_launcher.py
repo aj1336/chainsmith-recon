@@ -4,10 +4,18 @@ app/check_launcher.py - Simple Check Execution Engine
 Dead simple check execution with dependency resolution.
 No scenario logic here — that happens before checks reach the launcher.
 
-Supports on_critical behavior:
-- When a check produces critical observations, the affected hosts are tracked.
-- Before running downstream checks, the launcher resolves on_critical for
-  that check's suite and applies annotate/skip/stop behavior per host.
+Supports on_critical behavior (Phase 56.15 — per-check, wired end-to-end):
+- When a check produces a critical observation, the launcher resolves that
+  check's on_critical policy (per-check `check.on_critical` from its config.yaml,
+  falling back to the legacy suite-level preference only when the check is at the
+  default "annotate") and applies it:
+    * stop            — halt the whole scan at the next check boundary.
+    * skip_downstream — skip the transitive DAG dependents of the critical check
+                        (checks whose conditions consume its `produces`).
+    * annotate        — (default) mark observations on the same host coming from
+                        a later suite; nothing is skipped.
+- NOTE: the swarm execution path (app/swarm/) does NOT enforce on_critical yet —
+  tracked follow-up; this enforcement lives only in the local CheckLauncher.
 
 Usage:
     from app.check_launcher import CheckLauncher
@@ -80,6 +88,14 @@ class CheckLauncher:
         # critical_hosts tracks hosts with critical observations, keyed by host.
         # Each entry is a list of {suite, check_name, observation_title, observation_id}.
         self.critical_hosts: dict[str, list[dict]] = {}
+
+        # on_critical='skip_downstream' targets: check names to skip because an
+        # upstream check they (transitively) depend on yielded a critical, mapped
+        # to the source check that triggered the skip (for the skip reason).
+        self.skip_downstream_targets: dict[str, str] = {}
+        # name → set of check names that DIRECTLY depend on it (consume its
+        # `produces`). Built once; transitive closure computed on demand.
+        self._dependents_map: dict[str, set[str]] = self._build_dependents_map()
 
         logger.info("=" * 60)
         logger.info(">>> NEW CHECK_LAUNCHER.PY IS RUNNING <<<")
@@ -365,7 +381,7 @@ class CheckLauncher:
     # ── on_critical helpers ────────────────────────────────────────
 
     def _record_critical(self, host: str, suite: str, check_name: str, obs_dict: dict) -> None:
-        """Record a critical observation for a host."""
+        """Record a critical observation and apply the check's on_critical policy."""
         if host not in self.critical_hosts:
             self.critical_hosts[host] = []
 
@@ -378,47 +394,81 @@ class CheckLauncher:
         self.critical_hosts[host].append(entry)
         logger.info(f"  Critical observation recorded: {host} from {suite}/{check_name}")
 
-        # Check if on_critical for this suite is "stop"
-        on_critical = self._resolve_on_critical(suite)
+        # Resolve the policy for THIS check (per-check first, suite preference
+        # fallback) and act on it (Phase 56.15).
+        on_critical = self._resolve_check_on_critical(check_name, suite)
+
         if on_critical == "stop":
             logger.warning(f"on_critical='stop' triggered by {check_name} — halting scan")
             self.scan_stopped = True
-
-    def _should_skip_for_critical(self, check) -> str | None:
-        """
-        Check if a check should be skipped due to on_critical='skip_downstream'.
-
-        Only skips if ALL service hosts for this check have critical observations
-        from an earlier suite. Returns a reason string if skipping, None otherwise.
-        """
-        if not self.critical_hosts:
-            return None
-
-        check_suite = self._infer_suite(check.name)
-
-        # Find which suites produced critical observations
-        critical_suites = set()
-        for entries in self.critical_hosts.values():
-            for entry in entries:
-                critical_suites.add(entry["suite"])
-
-        # Only skip if a DIFFERENT (earlier) suite produced the critical observations
-        # and that suite's on_critical is skip_downstream
-        for critical_suite in critical_suites:
-            if critical_suite == check_suite:
-                continue  # Same suite — don't skip
-            on_critical = self._resolve_on_critical(critical_suite)
-            if on_critical == "skip_downstream":
-                # Check if this check's service hosts overlap with critical hosts
-                # For simplicity: if ANY critical host exists from an earlier suite,
-                # skip this check. More granular per-service filtering happens at
-                # the individual check level via annotations.
-                return (
-                    f"on_critical='skip_downstream' from {critical_suite} suite — "
-                    f"critical observations on hosts: {list(self.critical_hosts.keys())}"
+        elif on_critical == "skip_downstream":
+            dependents = self._transitive_dependents(check_name)
+            for dep in dependents:
+                # First trigger wins as the recorded source (deterministic).
+                self.skip_downstream_targets.setdefault(dep, check_name)
+            if dependents:
+                logger.warning(
+                    f"on_critical='skip_downstream' from {check_name} — "
+                    f"will skip {len(dependents)} downstream check(s): {sorted(dependents)}"
                 )
 
-        return None
+    def _should_skip_for_critical(self, check) -> str | None:
+        """Return a reason if `check` is a downstream dependent of a check that
+        yielded a critical under on_critical='skip_downstream', else None."""
+        source = self.skip_downstream_targets.get(check.name)
+        if source is None:
+            return None
+        return (
+            f"on_critical='skip_downstream': upstream check '{source}' yielded a "
+            f"critical observation"
+        )
+
+    def _resolve_check_on_critical(self, check_name: str, suite: str) -> str:
+        """Resolve on_critical for a single check (Phase 56.15).
+
+        Per-check `check.on_critical` (resolved from its config.yaml via the
+        ConfigResolver — §5.3) wins. When the check is at the default "annotate",
+        fall back to the legacy suite-level preference so existing
+        `checks.on_critical_overrides` keep working (back-compat).
+        """
+        check = self.checks.get(check_name)
+        value = (getattr(check, "on_critical", None) or "annotate") if check else "annotate"
+        if value != "annotate":
+            return value
+        return self._resolve_on_critical(suite)
+
+    def _build_dependents_map(self) -> dict[str, set[str]]:
+        """Map each check name → the checks that DIRECTLY depend on it.
+
+        A check D depends on producer P when one of D's `conditions` consumes an
+        output P declares in `produces` (the same produces/conditions DAG the
+        ChainOrchestrator builds). Computed once from the static check list.
+        """
+        output_producers: dict[str, list[str]] = {}
+        for name, check in self.checks.items():
+            for output in getattr(check, "produces", None) or []:
+                output_producers.setdefault(output, []).append(name)
+
+        dependents: dict[str, set[str]] = {name: set() for name in self.checks}
+        for name, check in self.checks.items():
+            for cond in getattr(check, "conditions", None) or []:
+                for producer in output_producers.get(cond.output_name, []):
+                    if producer != name:
+                        dependents[producer].add(name)
+        return dependents
+
+    def _transitive_dependents(self, start: str) -> set[str]:
+        """All checks reachable downstream of `start` in the dependents DAG
+        (excludes `start` itself)."""
+        seen: set[str] = set()
+        stack = [start]
+        while stack:
+            current = stack.pop()
+            for dep in self._dependents_map.get(current, ()):
+                if dep not in seen:
+                    seen.add(dep)
+                    stack.append(dep)
+        return seen
 
     def _annotate_observation_if_needed(self, obs_dict: dict, check_suite: str) -> None:
         """Annotate an observation if its host has critical observations from an earlier suite."""

@@ -4,6 +4,14 @@ app/swarm/runner.py - SwarmRunner: drop-in replacement for CheckLauncher.
 When swarm mode is enabled, run_scan() uses SwarmRunner instead of
 CheckLauncher. SwarmRunner does not execute checks itself -- it waits
 for remote agents to complete tasks via the coordinator.
+
+KNOWN GAP (tracked follow-up): unlike CheckLauncher, the swarm path does NOT
+enforce per-check `on_critical` (stop / skip_downstream) — see Phase 56.15. A
+critical observation from a swarm task neither halts the scan nor skips its DAG
+dependents. Enforcing it here means a post-completion hook in the coordinator
+(inspect each result's severity, halt via `is_running=False` or gate task
+assignment on the dependents set). Deferred to keep 56.15 scoped to the local
+launcher.
 """
 
 from __future__ import annotations

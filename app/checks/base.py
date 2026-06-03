@@ -231,7 +231,8 @@ class BaseCheck(BaseComponent, ABC):
     description: str = "Base check - override this"
     component_type: str = "check"  # BaseComponent identity (Phase 56 §6)
 
-    # ─── Critical-observation policy (Phase 56 §5; wired end-to-end in 56.15) ──
+    # ─── Critical-observation policy (Phase 56 §5; enforced per-check by the
+    #     CheckLauncher as of 56.15 — stop / skip_downstream / annotate) ──
     on_critical: str = "annotate"
     enabled: bool = True
 

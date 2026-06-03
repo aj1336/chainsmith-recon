@@ -192,3 +192,17 @@ def get_check_by_name(name: str):
         if c.name == name:
             return c
     return None
+
+
+def get_all_check_metadata() -> list:
+    """Import-free metadata for ALL checks, INCLUDING disabled ones (Phase 56.15).
+
+    Unlike `get_real_checks()` (which the loader builds from enabled components
+    only), this surfaces disabled checks too so the API/WebUI can show an
+    enable/disable toggle. Returns a list of `ComponentMeta`.
+    """
+    from pathlib import Path
+
+    from app.component_loader import discover_component_metadata
+
+    return discover_component_metadata(Path(__file__).parent / "checks", "check")
