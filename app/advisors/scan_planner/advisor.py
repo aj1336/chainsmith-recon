@@ -1,9 +1,10 @@
 """
-app/advisors/scan_planner_advisor.py - Pre-Scan Planning Advisor (Phase 41)
+app/advisors/scan_planner/advisor.py - Pre-Scan Planning Advisor (Phase 41,
+foldered Phase 56.11)
 
 Rule-based advisor that analyzes the current scope, target characteristics,
 and available checks to produce planning recommendations BEFORE the operator
-starts scanning.
+starts scanning. Deterministic: no LLM calls.
 
 Responsibilities:
 - Scope completeness: flag missing exclusions, suggest common patterns
@@ -12,19 +13,19 @@ Responsibilities:
 - Target analysis: identify target characteristics and suggest strategies
 
 This advisor never modifies scope or executes checks. It recommends —
-the operator decides.
-
-Usage:
-    from app.advisors.scan_planner_advisor import ScanPlannerAdvisor
-
-    advisor = ScanPlannerAdvisor(scope, available_checks, check_metadata, proof_config)
-    recommendations = advisor.analyze()
+the operator decides. Construction stays at the call site
+(`app/routes/advisor.py`); the advisor registry only resolves identity + config.
+It has no constructor-time config (the route runs it unconditionally); its
+config.yaml carries `enabled: true` for discovery/contract parity only.
 """
+
+from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.advisors.base import BaseAdvisor
 from app.models import ScopeDefinition
 
 logger = logging.getLogger(__name__)
@@ -96,7 +97,7 @@ AI_CHECK_PATTERNS: list[str] = [
 # ── Advisor Engine ───────────────────────────────────────────────
 
 
-class ScanPlannerAdvisor:
+class ScanPlannerAdvisor(BaseAdvisor):
     """
     Rule-based pre-scan planning advisor.
 

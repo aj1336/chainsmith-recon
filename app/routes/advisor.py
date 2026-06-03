@@ -10,7 +10,8 @@ import logging
 
 from fastapi import APIRouter, Query
 
-from app.config import get_config
+from app.advisors.registry import get_advisor_registry
+from app.advisors.scan_analysis.advisor import ScanAnalysisAdvisorConfig
 from app.db.repositories import AdvisorRepository, ScanRepository
 from app.scan_context import resolve_session
 from app.state import state
@@ -21,6 +22,13 @@ router = APIRouter()
 
 _advisor_repo = AdvisorRepository()
 _scan_repo = ScanRepository()
+
+
+def _scan_analysis_config() -> ScanAnalysisAdvisorConfig:
+    """Resolve the post-scan advisor's config.yaml (enabled + tunables, 56.11)."""
+    return ScanAnalysisAdvisorConfig.from_component_config(
+        get_advisor_registry().config("scan_analysis")
+    )
 
 
 async def _resolve_scan_id(scan_id: str | None) -> str | None:
@@ -42,19 +50,19 @@ async def get_recommendations(
 
     Returns empty list if advisor is disabled or no scan has completed.
     """
-    cfg = get_config()
+    cfg = _scan_analysis_config()
     sid = await _resolve_scan_id(scan_id)
 
     if not sid:
         return {
-            "enabled": cfg.scan_analysis_advisor.enabled,
+            "enabled": cfg.enabled,
             "recommendations": [],
             "count": 0,
         }
 
     recommendations = await _advisor_repo.get_recommendations(sid)
     return {
-        "enabled": cfg.scan_analysis_advisor.enabled,
+        "enabled": cfg.enabled,
         "recommendations": recommendations,
         "count": len(recommendations),
     }
@@ -63,12 +71,12 @@ async def get_recommendations(
 @router.get("/api/v1/scan-advisor/config")
 async def get_advisor_config():
     """Get current scan analysis advisor configuration."""
-    cfg = get_config()
+    cfg = _scan_analysis_config()
     return {
-        "enabled": cfg.scan_analysis_advisor.enabled,
-        "mode": cfg.scan_analysis_advisor.mode,
-        "auto_seed_urls": cfg.scan_analysis_advisor.auto_seed_urls,
-        "require_approval": cfg.scan_analysis_advisor.require_approval,
+        "enabled": cfg.enabled,
+        "mode": cfg.mode,
+        "auto_seed_urls": cfg.auto_seed_urls,
+        "require_approval": cfg.require_approval,
     }
 
 
@@ -83,7 +91,7 @@ async def get_planner_recommendations():
     Returns recommendations for scope completeness, check selection,
     and scan readiness. Runs live (not from DB).
     """
-    from app.advisors.scan_planner_advisor import ScanPlannerAdvisor
+    from app.advisors.scan_planner import ScanPlannerAdvisor
     from app.engine.scanner import AVAILABLE_CHECKS
     from app.models import ScopeDefinition
 

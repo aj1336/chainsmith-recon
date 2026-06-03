@@ -1,19 +1,29 @@
 """
-CheckProofAdvisor
+app/advisors/check_proof/advisor.py - Check Proof Advisor (foldered Phase 56.11)
 
 Deterministic advisor that generates templated reproduction steps for verified
 findings. Maps check types to YAML proof command templates and populates them
 from observation metadata.
 
 No LLM calls — output is entirely rule-based and deterministic.
+
+Construction stays at the call site; the advisor registry only resolves identity
++ config.yaml (see app/advisors/registry.py). There is no wired runtime call site
+yet (migrated for folder-shape uniformity); the typed CheckProofAdvisorConfig +
+`from_component_config` are ready for when one lands.
 """
+
+from __future__ import annotations
 
 import logging
 import re
+from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yaml
 
+from app.advisors.base import BaseAdvisor
 from app.models import (
     EvidenceChecklistItem,
     EvidenceQuality,
@@ -24,10 +34,44 @@ from app.models import (
     ResearchEnrichment,
 )
 
+if TYPE_CHECKING:
+    from app.components.config_models import ComponentConfig
+
 logger = logging.getLogger(__name__)
 
 # Default templates directory
-_TEMPLATES_DIR = Path(__file__).parent.parent / "data" / "proof_templates"
+_TEMPLATES_DIR = Path(__file__).parent.parent.parent / "data" / "proof_templates"
+
+
+# ── Configuration ────────────────────────────────────────────────
+
+
+@dataclass
+class CheckProofAdvisorConfig:
+    """Check-proof advisor configuration.
+
+    Migrated out of ChainsmithConfig into config.yaml in 56.11;
+    `from_component_config` hydrates this typed view from the resolved
+    ComponentConfig the registry hands back.
+    """
+
+    enabled: bool = True
+    trigger: str = "operator_selected"  # operator_selected | auto_verified
+    include_commands: bool = True
+    include_screenshots: bool = True
+    template_dir: str = "app/data/proof_templates/"
+
+    @classmethod
+    def from_component_config(cls, cfg: ComponentConfig) -> CheckProofAdvisorConfig:
+        """Build the typed config from a resolved `config.yaml` ComponentConfig."""
+        p = cfg.parameters
+        return cls(
+            enabled=cfg.enabled,
+            trigger=str(p.get("trigger", "operator_selected")),
+            include_commands=bool(p.get("include_commands", True)),
+            include_screenshots=bool(p.get("include_screenshots", True)),
+            template_dir=str(p.get("template_dir", "app/data/proof_templates/")),
+        )
 
 
 def _load_templates(template_dir: Path | None = None) -> dict[str, dict]:
@@ -189,7 +233,7 @@ def _match_template(observation: Observation, templates: dict[str, dict]) -> dic
     return templates.get("default", {})
 
 
-class CheckProofAdvisor:
+class CheckProofAdvisor(BaseAdvisor):
     """Deterministic advisor that generates proof guidance for verified findings.
 
     Loads YAML proof templates and populates them from observation metadata.

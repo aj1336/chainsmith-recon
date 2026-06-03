@@ -1,12 +1,10 @@
 """
-app/advisors/scan_analysis_advisor.py - Post-Scan Analysis Advisor (Phase 20, renamed Phase 41)
+app/advisors/scan_analysis/advisor.py - Post-Scan Analysis Advisor (Phase 20,
+renamed Phase 41, foldered Phase 56.11)
 
 Optional, rule-based advisor that analyzes completed scan results and
 recommends follow-up actions. Disabled by default. Never runs checks —
-only recommends.
-
-Renamed from ScanAdvisor → ScanAnalysisAdvisor in Phase 41 to clarify
-its post-scan role and make room for ScanPlannerAdvisor (pre-scan).
+only recommends. Deterministic: no LLM calls.
 
 Phase 1: Post-scan analysis only.
 - Gap analysis: checks that could have run with better inputs
@@ -14,16 +12,21 @@ Phase 1: Post-scan analysis only.
 - Follow-up suggestions: deeper checks based on what was observed
 - Coverage cross-reference: suites with zero or low coverage
 
-Usage:
-    from app.advisors.scan_analysis_advisor import ScanAnalysisAdvisor
-
-    advisor = ScanAnalysisAdvisor(launcher, all_checks)
-    recommendations = advisor.analyze()
+Construction stays at the call site (`app/engine/scanner.py:_run_scan_advisor`
+via `build_analysis_advisor_from_launcher`); the advisor registry only resolves
+identity + config.yaml (see app/advisors/registry.py).
 """
+
+from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+from app.advisors.base import BaseAdvisor
+
+if TYPE_CHECKING:
+    from app.components.config_models import ComponentConfig
 
 logger = logging.getLogger(__name__)
 
@@ -56,12 +59,28 @@ class ScanAnalysisRecommendation:
 
 @dataclass
 class ScanAnalysisAdvisorConfig:
-    """Advisor configuration. Disabled by default."""
+    """Advisor configuration. Disabled by default.
+
+    The tunables live in `config.yaml` (`enabled` + `parameters`) as of 56.11;
+    `from_component_config` hydrates this typed view from the resolved
+    `ComponentConfig` the registry hands back.
+    """
 
     enabled: bool = False
     mode: str = "post_scan"  # post_scan only for Phase 1
     auto_seed_urls: bool = False  # allow advisor to suggest context injection
     require_approval: bool = True  # user must approve each recommendation
+
+    @classmethod
+    def from_component_config(cls, cfg: ComponentConfig) -> ScanAnalysisAdvisorConfig:
+        """Build the typed config from a resolved `config.yaml` ComponentConfig."""
+        p = cfg.parameters
+        return cls(
+            enabled=cfg.enabled,
+            mode=str(p.get("mode", "post_scan")),
+            auto_seed_urls=bool(p.get("auto_seed_urls", False)),
+            require_approval=bool(p.get("require_approval", True)),
+        )
 
 
 # ── Follow-up rules ──────────────────────────────────────────────
@@ -158,7 +177,7 @@ SUITE_COVERAGE_THRESHOLDS: dict[str, int] = {
 # ── Advisor Engine ───────────────────────────────────────────────
 
 
-class ScanAnalysisAdvisor:
+class ScanAnalysisAdvisor(BaseAdvisor):
     """
     Rule-based post-scan advisor.
 

@@ -1,0 +1,16 @@
+# app/advisors/scan_analysis/config.yaml — tunables only (Phase 56 §5, 56.11)
+#
+# `enabled` is the single source of truth for whether the post-scan advisor runs
+# (the scan path reads it via the advisor registry). Disabled by default — it was
+# `ScanAnalysisAdvisorConfig` on ChainsmithConfig before 56.11. `parameters` holds
+# the advisor's own knobs; ScanAnalysisAdvisorConfig.from_component_config hydrates
+# the typed view from these.
+#
+# Legacy back-compat: the CHAINSMITH_SCAN_ANALYSIS_ADVISOR_* / CHAINSMITH_SCAN_ADVISOR_*
+# env vars are NO LONGER read (the config.py env block was removed in 56.11).
+
+enabled: false
+parameters:
+  mode: post_scan
+  auto_seed_urls: false
+  require_approval: true

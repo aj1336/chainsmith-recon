@@ -317,27 +317,23 @@ async def run_scan(
 async def _run_scan_advisor(launcher=None, scan_id: str | None = None) -> None:
     """Run post-scan advisor analysis if enabled."""
     try:
-        cfg = get_config()
-        if not cfg.scan_analysis_advisor.enabled:
+        from app.advisors.registry import get_advisor_registry
+        from app.advisors.scan_analysis.advisor import (
+            ScanAnalysisAdvisorConfig,
+            build_analysis_advisor_from_launcher,
+        )
+
+        # `enabled` lives in app/advisors/scan_analysis/config.yaml now (56.11),
+        # resolved via the advisor registry — not ChainsmithConfig.
+        advisor_cfg = ScanAnalysisAdvisorConfig.from_component_config(
+            get_advisor_registry().config("scan_analysis")
+        )
+        if not advisor_cfg.enabled:
             return
 
         if launcher is None:
             logger.info("Scan advisor: skipped (no local launcher — swarm mode?)")
             return
-
-        from app.advisors.scan_analysis_advisor import (
-            ScanAnalysisAdvisorConfig as AdvisorConfig,
-        )
-        from app.advisors.scan_analysis_advisor import (
-            build_analysis_advisor_from_launcher,
-        )
-
-        advisor_cfg = AdvisorConfig(
-            enabled=cfg.scan_analysis_advisor.enabled,
-            mode=cfg.scan_analysis_advisor.mode,
-            auto_seed_urls=cfg.scan_analysis_advisor.auto_seed_urls,
-            require_approval=cfg.scan_analysis_advisor.require_approval,
-        )
 
         all_checks = get_real_checks()
         advisor = build_analysis_advisor_from_launcher(launcher, all_checks, advisor_cfg)

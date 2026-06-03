@@ -1,0 +1,14 @@
+# app/advisors/scan_planner/contract.yaml — identity + I/O (Phase 56 §4.1, 56.11)
+
+id: 77b5eaf0-3528-48d2-a828-38ddce572021
+name: scan_planner
+type: advisor
+description: "Deterministic pre-scan advisor: scope-completeness, third-party/CDN detection, proof-of-scope and scan-window readiness, AI-suite suggestions, and broad-port warnings. Recommends only; never runs checks or modifies scope."
+entry: advisor.py:ScanPlannerAdvisor
+
+outputs:
+  recommendations: [ScanPlannerRecommendation]
+side_effects: [none]
+references:
+  - docs/future-ideas/completed/phase41-scan-advisor-split.md
+reason: ""

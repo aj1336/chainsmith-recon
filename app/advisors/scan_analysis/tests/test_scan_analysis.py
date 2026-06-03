@@ -1,9 +1,10 @@
 """
-Tests for app/advisors/scan_analysis_advisor.py
+Tests for app/advisors/scan_analysis/advisor.py
 
 Covers:
+- Folder-shape discovery + config resolution (discover_advisor_specs)
 - ScanAnalysisRecommendation dataclass
-- ScanAnalysisAdvisorConfig defaults (disabled by default)
+- ScanAnalysisAdvisorConfig defaults + config.yaml hydration
 - Gap analysis: detects checks blocked by missing context
 - Partial results: flags failed and skipped checks
 - Follow-up suggestions: triggers based on observations
@@ -14,11 +15,14 @@ Covers:
 
 import pytest
 
-from app.advisors.scan_analysis_advisor import (
+from app.advisors.base import BaseAdvisor
+from app.advisors.registry import discover_advisor_specs
+from app.advisors.scan_analysis.advisor import (
     ScanAnalysisAdvisor,
     ScanAnalysisAdvisorConfig,
     ScanAnalysisRecommendation,
 )
+from app.components.config_models import ComponentConfig
 
 pytestmark = pytest.mark.unit
 
@@ -46,6 +50,53 @@ def _make_advisor(
         check_metadata=check_metadata or {},
         config=ScanAnalysisAdvisorConfig(enabled=enabled),
     )
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Discovery + Config Resolution
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestDiscoveryAndConfig:
+    def test_scan_analysis_is_discovered(self):
+        registry = discover_advisor_specs()
+        assert "scan_analysis" in registry.names()
+
+    def test_disabled_advisor_still_discovered(self):
+        """Advisors are config/discovery accessors — disabled ones stay readable
+        (unlike agents, which are skipped). scan_analysis ships disabled."""
+        registry = discover_advisor_specs()
+        assert "scan_analysis" in registry
+        assert registry.config("scan_analysis").enabled is False
+
+    def test_entry_class_is_baseadvisor(self):
+        registry = discover_advisor_specs()
+        cls = registry.entry_cls("scan_analysis")
+        assert cls is ScanAnalysisAdvisor
+        assert issubclass(cls, BaseAdvisor)
+
+    def test_config_yaml_hydrates_typed_config(self):
+        registry = discover_advisor_specs()
+        cfg = ScanAnalysisAdvisorConfig.from_component_config(registry.config("scan_analysis"))
+        assert cfg.enabled is False
+        assert cfg.mode == "post_scan"
+        assert cfg.auto_seed_urls is False
+        assert cfg.require_approval is True
+
+    def test_from_component_config_reads_parameters(self):
+        comp = ComponentConfig(
+            enabled=True,
+            parameters={
+                "mode": "between_iterations",
+                "auto_seed_urls": True,
+                "require_approval": False,
+            },
+        )
+        cfg = ScanAnalysisAdvisorConfig.from_component_config(comp)
+        assert cfg.enabled is True
+        assert cfg.mode == "between_iterations"
+        assert cfg.auto_seed_urls is True
+        assert cfg.require_approval is False
 
 
 # ═══════════════════════════════════════════════════════════════════

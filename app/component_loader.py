@@ -119,6 +119,14 @@ _INJECTED_REQUIRED: dict[str, set[str]] = {
     "agent": {"client"},
 }
 
+# Component types whose entry class is constructed by its CALLER with per-call
+# data (not by the loader or a factory), so the no-arg/injected-required rule
+# does not apply at all. Advisors (56.11) are deterministic but parameterized —
+# the scan path / route builds them with launcher state or request scope it
+# already holds. They are still parsed, identity-checked, and folder-hygiene
+# checked; only the __init__ constructibility assertion is skipped.
+_CALLER_CONSTRUCTED: set[str] = {"advisor"}
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # verify_contracts — passes 1-3 (no imports)
@@ -229,7 +237,9 @@ def _verify_entry_constructible(
 ) -> list[Violation]:
     """AST-assert the entry class exists and its `__init__` requires only params
     the type's factory injects (§6/§8.6). Checks must be no-arg; agents may
-    require the injected `client` (see `_INJECTED_REQUIRED`)."""
+    require the injected `client` (see `_INJECTED_REQUIRED`); caller-constructed
+    types (advisors, `_CALLER_CONSTRUCTED`) are exempt from the __init__ rule
+    entirely but still get the entry-exists/class-present checks."""
     violations: list[Violation] = []
     filename, class_name = parse_entry(entry)
     if not filename or not class_name:
@@ -246,6 +256,8 @@ def _verify_entry_constructible(
         return [
             Violation(comp_dir, "entry-class-missing", f"class '{class_name}' not in {filename}")
         ]
+    if component_type in _CALLER_CONSTRUCTED:
+        return violations  # caller builds it with per-call data — no __init__ rule
     injected = _INJECTED_REQUIRED.get(component_type, set())
     for node in class_def.body:
         if isinstance(node, ast.FunctionDef) and node.name == "__init__":

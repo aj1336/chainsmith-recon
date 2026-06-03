@@ -13,6 +13,7 @@ from app.component_loader import verify_contracts
 _APP = Path(__file__).resolve().parent.parent / "app"
 CHECKS_ROOT = _APP / "checks"
 AGENTS_ROOT = _APP / "agents"
+ADVISORS_ROOT = _APP / "advisors"
 
 
 def test_check_contracts_have_no_violations():
@@ -25,5 +26,12 @@ def test_check_contracts_have_no_violations():
 def test_agent_contracts_have_no_violations():
     violations = verify_contracts(AGENTS_ROOT, "agent")
     assert not violations, "Agent contract violations:\n" + "\n".join(
+        f"  - {v}" for v in violations
+    )
+
+
+def test_advisor_contracts_have_no_violations():
+    violations = verify_contracts(ADVISORS_ROOT, "advisor")
+    assert not violations, "Advisor contract violations:\n" + "\n".join(
         f"  - {v}" for v in violations
     )

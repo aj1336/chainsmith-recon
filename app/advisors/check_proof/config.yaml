@@ -1,0 +1,15 @@
+# app/advisors/check_proof/config.yaml — tunables only (Phase 56 §5, 56.11)
+#
+# `enabled` + the advisor's knobs, migrated out of ChainsmithConfig.check_proof_advisor
+# in 56.11. CheckProofAdvisorConfig.from_component_config hydrates the typed view.
+# No runtime call site is wired yet (migrated for folder-shape uniformity).
+#
+# Legacy back-compat: CHAINSMITH_CHECK_PROOF_ADVISOR_ENABLED is NO LONGER read
+# (the config.py env block was removed in 56.11).
+
+enabled: true
+parameters:
+  trigger: operator_selected
+  include_commands: true
+  include_screenshots: true
+  template_dir: "app/data/proof_templates/"

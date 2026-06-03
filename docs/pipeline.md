@@ -452,7 +452,7 @@ the operator clears chat. No persistence across sessions.
 
 ### ScanAdvisor
 
-`app/scan_advisor.py`
+`app/advisors/scan_analysis/` (folder shape, Phase 56.11)
 
 - **Role:** Post-scan analysis — identifies gaps, partial results,
   follow-up opportunities, and coverage shortfalls.
@@ -474,20 +474,20 @@ the operator clears chat. No persistence across sessions.
 **Recommendation categories:** `gap_analysis`, `config_suggestion`,
 `context_seed`, `speculative`.
 
-**Configuration:**
+**Configuration** (`app/advisors/scan_analysis/config.yaml` — `enabled` + `parameters`, Phase 56.11):
 
 | Setting | Default |
 |---------|---------|
-| `scan_advisor.enabled` | `false` |
-| `scan_advisor.mode` | `post_scan` |
-| `scan_advisor.auto_seed_urls` | `false` |
-| `scan_advisor.require_approval` | `true` |
+| `enabled` | `false` |
+| `parameters.mode` | `post_scan` |
+| `parameters.auto_seed_urls` | `false` |
+| `parameters.require_approval` | `true` |
 
 ---
 
 ### CheckProof Advisor
 
-`app/advisors/check_proof.py`
+`app/advisors/check_proof/` (folder shape, Phase 56.11)
 
 - **Role:** Generates templated reproduction steps and copy-pasteable
   commands for verified findings.
@@ -505,14 +505,14 @@ the operator clears chat. No persistence across sessions.
 
 **Template location:** `app/data/proof_templates/` (YAML files).
 
-**Configuration:**
+**Configuration** (`app/advisors/check_proof/config.yaml` — `enabled` + `parameters`, Phase 56.11):
 
 | Setting | Default |
 |---------|---------|
-| `check_proof.enabled` | `true` |
-| `check_proof.trigger` | `operator_selected` |
-| `check_proof.include_commands` | `true` |
-| `check_proof.include_screenshots` | `true` |
+| `enabled` | `true` |
+| `parameters.trigger` | `operator_selected` |
+| `parameters.include_commands` | `true` |
+| `parameters.include_screenshots` | `true` |
 | `check_proof.template_dir` | `app/data/proof_templates/` |
 
 ---
@@ -643,10 +643,9 @@ triage:
   context_file: ~/.chainsmith/triage_context.yaml
   kb_path: app/data/remediation_guidance.json
 
-scan_advisor:
-  enabled: false
-  mode: post_scan
-  require_approval: true
+# scan_advisor / check_proof config moved to per-advisor config.yaml in 56.11:
+#   app/advisors/scan_analysis/config.yaml, app/advisors/check_proof/config.yaml
+# (these top-level chainsmith.yaml blocks are no longer parsed).
 
 researcher:
   enabled: true

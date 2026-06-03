@@ -14,12 +14,14 @@ def __getattr__(name: str):
         from app.advisors.check_proof import CheckProofAdvisor
 
         return CheckProofAdvisor
+    # NOTE: check_proof / scan_analysis / scan_planner are now subpackages
+    # (folder shape, 56.11); these lazy imports resolve to their package re-exports.
     if name == "ScanAnalysisAdvisor":
-        from app.advisors.scan_analysis_advisor import ScanAnalysisAdvisor
+        from app.advisors.scan_analysis import ScanAnalysisAdvisor
 
         return ScanAnalysisAdvisor
     if name == "ScanPlannerAdvisor":
-        from app.advisors.scan_planner_advisor import ScanPlannerAdvisor
+        from app.advisors.scan_planner import ScanPlannerAdvisor
 
         return ScanPlannerAdvisor
     raise AttributeError(f"module 'app.advisors' has no attribute {name!r}")

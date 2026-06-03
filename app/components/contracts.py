@@ -10,8 +10,9 @@ Pydantic at the I/O boundary; the runtime domain objects (e.g. the
 `CheckCondition` dataclass in `app/checks/base.py`) are converted from these at
 load time. Each `Condition` below mirrors that dataclass.
 
-Only the `check` variant is concrete this phase. Agent/advisor/gate contracts
-are sibling models discriminated on `type` and land with 56.10-56.12 (§4.1).
+`check` (56.1-56.9), `agent` (56.10), and `advisor` (56.11) are concrete. The
+`gate` contract is a sibling model discriminated on `type` and lands with 56.12
+(§4.1).
 """
 
 from __future__ import annotations
@@ -115,19 +116,55 @@ class AgentContract(BaseModel):
     reason: str = ""
 
 
-# Registry of contract models by component type. `check` and `agent` are
-# concrete; advisor/gate models are added here as 56.11-56.12 land, at which
-# point this becomes the discriminated union described in §4.1.
+class AdvisorContract(BaseModel):
+    """Identity + I/O contract for an `advisor` component (§4.1, 56.11).
+
+    Advisors are DETERMINISTIC, rule-based analysis components — they read
+    completed pipeline state and emit recommendations, never blocking and never
+    calling an LLM. So the contract is deliberately thin: it has neither a
+    check's execution wiring (`suite`/`depends_on`/`produces` — advisors aren't
+    in the scan DAG) nor an agent's LLM interface (`role`/`triggers`/`tools`/
+    `prompts`).
+
+    Advisors are also constructed differently from both: not no-arg by the
+    loader (like checks) and not by a dependency-injecting factory (like
+    agents), but by their **call site** with per-call data it already holds
+    (launcher state, request scope). So they are discovered as *specs*
+    (`app/advisors/registry.py`) for identity + config resolution only — there
+    is no `.create()` factory — and `verify_contracts` exempts them from the
+    no-arg constructibility rule. The folder name must equal `name`.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # ─── identity ───────────────────────────────────────────────
+    id: UUID4  # assigned once at authorship
+    name: str  # slug; must match folder name
+    type: Literal["advisor"] = "advisor"
+    description: str
+    entry: str  # "advisor.py:ClassName"
+
+    # ─── I/O + metadata ─────────────────────────────────────────
+    outputs: dict[str, Any] = Field(default_factory=lambda: {"recommendations": []})
+    side_effects: list[SideEffect] = Field(default_factory=lambda: ["none"])
+    references: list[str] = Field(default_factory=list)
+    reason: str = ""
+
+
+# Registry of contract models by component type. `check`/`agent`/`advisor` are
+# concrete; the `gate` model is added here as 56.12 lands, at which point this
+# becomes the discriminated union described in §4.1.
 CONTRACT_MODELS: dict[str, type[BaseModel]] = {
     "check": CheckContract,
     "agent": AgentContract,
+    "advisor": AdvisorContract,
 }
 
 
 def contract_model_for(component_type: str) -> type[BaseModel]:
     """Return the Pydantic contract model for a component type.
 
-    Raises KeyError for types not yet specified (agent/advisor/gate until their
-    sub-phases land) so a premature use fails loudly rather than silently.
+    Raises KeyError for types not yet specified (`gate` until 56.12 lands) so a
+    premature use fails loudly rather than silently.
     """
     return CONTRACT_MODELS[component_type]

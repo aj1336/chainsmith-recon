@@ -1,0 +1,14 @@
+# app/advisors/check_proof/contract.yaml — identity + I/O (Phase 56 §4.1, 56.11)
+
+id: 20d332de-e74b-4e8f-86dd-a185bdb9a7c4
+name: check_proof
+type: advisor
+description: "Deterministic proof advisor: maps verified observations to YAML proof-command templates and populates reproduction steps, evidence checklists, severity rationale, and false-positive indicators. No LLM calls."
+entry: advisor.py:CheckProofAdvisor
+
+outputs:
+  proof_guidance: [ProofGuidance]
+side_effects: [filesystem]
+references:
+  - docs/future-ideas/completed/phase40-advisor-consolidation.md
+reason: ""

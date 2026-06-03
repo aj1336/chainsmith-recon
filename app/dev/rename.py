@@ -40,13 +40,14 @@ import yaml
 # anyway. Look-alike modules (app/tools/port_scan.py) are not in the list.
 _NAME_REF_GLOBS = (
     "app/engine/chains.py",
-    "app/advisors/scan_analysis_advisor.py",
+    "app/advisors/scan_analysis/advisor.py",  # FOLLOW_UP_RULES trigger/suggest check-name refs
     "scenarios/*/scenario.json",
     "tests/**/*.py",
     "app/checks/*/*/tests/*.py",  # co-located check tests live under app/checks, not tests/
+    "app/advisors/*/tests/*.py",  # co-located advisor tests (folder shape, 56.11)
     "static/scan.html",
 )
-# NOT swept (separate namespaces, intentionally): app/advisors/check_proof.py keys
+# NOT swept (separate namespaces, intentionally): app/advisors/check_proof/ keys
 # proof templates by `check_type` (its own taxonomy, with a category fallback), and
 # simulation YAMLs are out of regression scope. Matches the proven 56.5 MCP sweep.
 

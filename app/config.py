@@ -92,14 +92,6 @@ class StorageConfig:
 
 
 @dataclass
-class ScanAnalysisAdvisorConfig:
-    enabled: bool = False
-    mode: str = "post_scan"  # post_scan (phase 1) or between_iterations (phase 2)
-    auto_seed_urls: bool = False  # allow advisor to suggest context injection
-    require_approval: bool = True  # user must approve each recommendation
-
-
-@dataclass
 class SwarmConfig:
     enabled: bool = False
     default_rate_limit: float = 10.0
@@ -113,15 +105,6 @@ class SwarmConfig:
 # app/agents/<name>/config.yaml (`enabled` + `parameters`), with legacy
 # CHAINSMITH_<AGENT>_* env vars honored by the agent registry's back-compat shim.
 # LLM model routing for these agents stays central (LiteLLMConfig above).
-
-
-@dataclass
-class CheckProofAdvisorConfig:
-    enabled: bool = True
-    trigger: str = "operator_selected"  # operator_selected | auto_verified
-    include_commands: bool = True
-    include_screenshots: bool = True
-    template_dir: str = "app/data/proof_templates/"
 
 
 @dataclass
@@ -170,11 +153,9 @@ class ChainsmithConfig:
     paths: PathsConfig = field(default_factory=PathsConfig)
     storage: StorageConfig = field(default_factory=StorageConfig)
     swarm: SwarmConfig = field(default_factory=SwarmConfig)
-    scan_analysis_advisor: ScanAnalysisAdvisorConfig = field(
-        default_factory=ScanAnalysisAdvisorConfig
-    )
+    # scan_analysis_advisor + check_proof_advisor moved to per-advisor
+    # app/advisors/<name>/config.yaml (56.11);
     # adjudicator / triage / researcher / coach moved to per-agent config.yaml (56.10c).
-    check_proof_advisor: CheckProofAdvisorConfig = field(default_factory=CheckProofAdvisorConfig)
     concurrency: ConcurrencyConfig = field(default_factory=ConcurrencyConfig)
     scan_stream: ScanStreamConfig = field(default_factory=ScanStreamConfig)
 
@@ -291,36 +272,13 @@ def _apply_yaml(cfg: ChainsmithConfig, data: dict) -> None:
         if "max_agents" in sw:
             swc.max_agents = int(sw["max_agents"])
 
-    # Support both old "scan_advisor" and new "scan_analysis_advisor" YAML keys
-    sa_data = data.get("scan_analysis_advisor") or data.get("scan_advisor")
-    if sa_data and isinstance(sa_data, dict):
-        sa = sa_data
-        sac = cfg.scan_analysis_advisor
-        if "enabled" in sa:
-            sac.enabled = bool(sa["enabled"])
-        if "mode" in sa:
-            sac.mode = str(sa["mode"])
-        if "auto_seed_urls" in sa:
-            sac.auto_seed_urls = bool(sa["auto_seed_urls"])
-        if "require_approval" in sa:
-            sac.require_approval = bool(sa["require_approval"])
-
+    # scan_analysis_advisor YAML block removed in 56.11 — the post-scan advisor
+    # reads its knobs from app/advisors/scan_analysis/config.yaml now.
     # adjudicator / triage / researcher YAML blocks removed in 56.10c — those
     # agents read their knobs from app/agents/<name>/config.yaml now.
 
-    if "check_proof_advisor" in data and isinstance(data["check_proof_advisor"], dict):
-        cpa = data["check_proof_advisor"]
-        cpac = cfg.check_proof_advisor
-        if "enabled" in cpa:
-            cpac.enabled = bool(cpa["enabled"])
-        if "trigger" in cpa:
-            cpac.trigger = str(cpa["trigger"])
-        if "include_commands" in cpa:
-            cpac.include_commands = bool(cpa["include_commands"])
-        if "include_screenshots" in cpa:
-            cpac.include_screenshots = bool(cpa["include_screenshots"])
-        if "template_dir" in cpa:
-            cpac.template_dir = str(cpa["template_dir"])
+    # check_proof_advisor YAML block removed in 56.11 — reads from
+    # app/advisors/check_proof/config.yaml now.
 
     # coach YAML block removed in 56.10c — read from app/agents/coach/config.yaml.
 
@@ -400,23 +358,9 @@ def _apply_env(cfg: ChainsmithConfig) -> None:
         with contextlib.suppress(ValueError):
             cfg.storage.retention_days = int(v)
 
-    # Scan analysis advisor overrides (supports old SCAN_ADVISOR prefix too)
-    if v := env.get("CHAINSMITH_SCAN_ANALYSIS_ADVISOR_ENABLED") or env.get(
-        "CHAINSMITH_SCAN_ADVISOR_ENABLED"
-    ):
-        cfg.scan_analysis_advisor.enabled = v.lower() in ("true", "1", "yes")
-    if v := env.get("CHAINSMITH_SCAN_ANALYSIS_ADVISOR_MODE") or env.get(
-        "CHAINSMITH_SCAN_ADVISOR_MODE"
-    ):
-        cfg.scan_analysis_advisor.mode = v
-    if v := env.get("CHAINSMITH_SCAN_ANALYSIS_ADVISOR_AUTO_SEED_URLS") or env.get(
-        "CHAINSMITH_SCAN_ADVISOR_AUTO_SEED_URLS"
-    ):
-        cfg.scan_analysis_advisor.auto_seed_urls = v.lower() in ("true", "1", "yes")
-    if v := env.get("CHAINSMITH_SCAN_ANALYSIS_ADVISOR_REQUIRE_APPROVAL") or env.get(
-        "CHAINSMITH_SCAN_ADVISOR_REQUIRE_APPROVAL"
-    ):
-        cfg.scan_analysis_advisor.require_approval = v.lower() in ("true", "1", "yes")
+    # Scan analysis advisor env overrides removed in 56.11 — knobs live in
+    # app/advisors/scan_analysis/config.yaml now (the CHAINSMITH_SCAN_ANALYSIS_ADVISOR_*
+    # / CHAINSMITH_SCAN_ADVISOR_* vars are no longer read).
 
     # Swarm overrides
     if v := env.get("CHAINSMITH_SWARM_ENABLED"):
@@ -433,9 +377,8 @@ def _apply_env(cfg: ChainsmithConfig) -> None:
     # CHAINSMITH_ADJUDICATOR_ENABLED / CHAINSMITH_TRIAGE_ENABLED /
     # CHAINSMITH_RESEARCHER_ENABLED / CHAINSMITH_RESEARCHER_OFFLINE still work.
 
-    # CheckProofAdvisor overrides
-    if v := env.get("CHAINSMITH_CHECK_PROOF_ADVISOR_ENABLED"):
-        cfg.check_proof_advisor.enabled = v.lower() in ("true", "1", "yes")
+    # CheckProofAdvisor env override removed in 56.11 — knobs live in
+    # app/advisors/check_proof/config.yaml now.
 
     # Scan stream (SSE) overrides
     if v := env.get("CHAINSMITH_SCAN_STREAM_ENABLED"):

@@ -127,7 +127,7 @@ Aggregated view of the swarm: agents online, task counts by status, current phas
 
 ### ChainsmithConfig
 
-Top-level config object (`app/config.py`). Composed of nested configs: `ScopeConfig`, `LiteLLMConfig`, `PathsConfig`, `StorageConfig`, `SwarmConfig`, `ScanAnalysisAdvisorConfig`. Loaded from YAML with environment variable overrides. (Agent configs — adjudicator/triage/researcher/coach — moved to per-agent `app/agents/<name>/config.yaml` in Phase 56.10c.)
+Top-level config object (`app/config.py`). Composed of nested configs: `ScopeConfig`, `LiteLLMConfig`, `PathsConfig`, `StorageConfig`, `SwarmConfig`. Loaded from YAML with environment variable overrides. (Agent configs — adjudicator/triage/researcher/coach — moved to per-agent `app/agents/<name>/config.yaml` in Phase 56.10c; advisor configs — scan_analysis/check_proof — moved to per-advisor `app/advisors/<name>/config.yaml` in Phase 56.11.)
 
 ### Port Profiles
 

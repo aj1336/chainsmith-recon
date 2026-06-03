@@ -1,20 +1,23 @@
 """
-Tests for app/advisors/scan_planner_advisor.py
+Tests for app/advisors/scan_planner/advisor.py
 
 Covers:
+- Folder-shape discovery (discover_advisor_specs)
 - ScanPlannerRecommendation dataclass
 - No exclusions rule
 - Third-party CDN detection
 - Proof-of-scope readiness
 - AI suite suggestion
-- Engagement window check
+- Scan window check
 - Single domain broad ports
 - No recommendations when scope is clean
 """
 
 import pytest
 
-from app.advisors.scan_planner_advisor import ScanPlannerAdvisor, ScanPlannerRecommendation
+from app.advisors.base import BaseAdvisor
+from app.advisors.registry import discover_advisor_specs
+from app.advisors.scan_planner.advisor import ScanPlannerAdvisor, ScanPlannerRecommendation
 from app.models import ScopeDefinition
 
 pytestmark = pytest.mark.unit
@@ -45,6 +48,28 @@ def _make_advisor(
         check_metadata=check_metadata or {},
         proof_of_scope_config=proof_config or {},
     )
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Discovery
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestDiscovery:
+    def test_scan_planner_is_discovered(self):
+        registry = discover_advisor_specs()
+        assert "scan_planner" in registry.names()
+
+    def test_enabled_by_default(self):
+        """scan_planner ships enabled (metadata-only; the route runs unconditionally)."""
+        registry = discover_advisor_specs()
+        assert registry.config("scan_planner").enabled is True
+
+    def test_entry_class_is_baseadvisor(self):
+        registry = discover_advisor_specs()
+        cls = registry.entry_cls("scan_planner")
+        assert cls is ScanPlannerAdvisor
+        assert issubclass(cls, BaseAdvisor)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -205,7 +230,7 @@ class TestAISuiteSuggestion:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# Engagement Window
+# Scan Window
 # ═══════════════════════════════════════════════════════════════════
 
 

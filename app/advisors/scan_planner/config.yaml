@@ -1,0 +1,8 @@
+# app/advisors/scan_planner/config.yaml — tunables only (Phase 56 §5, 56.11)
+#
+# scan_planner had NO config on ChainsmithConfig before 56.11 and its route runs
+# unconditionally. This file is metadata-only: `enabled: true` for discovery /
+# contract parity with the other advisors — the route does NOT gate on it (no
+# behavior change). No `parameters` (the advisor takes none at construction).
+
+enabled: true
