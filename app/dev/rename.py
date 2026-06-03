@@ -45,6 +45,7 @@ _NAME_REF_GLOBS = (
     "tests/**/*.py",
     "app/checks/*/*/tests/*.py",  # co-located check tests live under app/checks, not tests/
     "app/advisors/*/tests/*.py",  # co-located advisor tests (folder shape, 56.11)
+    "app/gates/*/tests/*.py",  # co-located gate tests (folder shape, 56.12)
     "static/scan.html",
 )
 # NOT swept (separate namespaces, intentionally): app/advisors/check_proof/ keys

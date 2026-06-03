@@ -85,11 +85,12 @@ Two components sit outside the linear pipeline:
 
 ### Guardian
 
-`app/guardian.py`
+`app/gates/guardian/gate.py` (folder-shape `gate` component, Phase 56.12;
+discovered via `app/gates/registry.py`, per-component `config.yaml`)
 
 - **Role:** Scope enforcement. Validates URLs and techniques against the
   operator-defined scope before any check executes. Also enforces
-  engagement window restrictions.
+  scan-window restrictions.
 - **Consumes:** URLs, technique names, `ScopeDefinition`.
 - **Produces:** Approve/reject decisions with violation reasons.
 - **When it runs:** Continuously during scanning; every request is checked.

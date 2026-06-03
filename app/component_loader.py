@@ -123,9 +123,11 @@ _INJECTED_REQUIRED: dict[str, set[str]] = {
 # data (not by the loader or a factory), so the no-arg/injected-required rule
 # does not apply at all. Advisors (56.11) are deterministic but parameterized —
 # the scan path / route builds them with launcher state or request scope it
-# already holds. They are still parsed, identity-checked, and folder-hygiene
-# checked; only the __init__ constructibility assertion is skipped.
-_CALLER_CONSTRUCTED: set[str] = {"advisor"}
+# already holds. Gates (56.12) are the same shape: the scan route/scanner/
+# launcher build a Guardian per scan via `from_scope(...)` with the operator's
+# scope. They are still parsed, identity-checked, and folder-hygiene checked;
+# only the __init__ constructibility assertion is skipped.
+_CALLER_CONSTRUCTED: set[str] = {"advisor", "gate"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -1,0 +1,20 @@
+# app/gates/guardian/config.yaml — tunables only (Phase 56 §5, 56.12)
+#
+# The Guardian carries no static ChainsmithConfig block (unlike the agents
+# migrated in 56.10c): it is built per-scan from the operator's scope
+# (target/exclude/forbidden_techniques) and reads the request-time
+# proof_settings.scan_window. So config.yaml is just the `enabled` switch plus
+# documented, currently-informational knobs — no chainsmith.yaml / env config
+# was removed, because none existed.
+#
+# `enabled` is introspectable via the registry; the scan path always constructs
+# and consults the Guardian (it is the chokepoint), so flipping this to false is
+# reserved for a future opt-out and is not a live kill switch today.
+
+enabled: true
+parameters:
+  # Whether out-of-scope URLs are hard-blocked (vs. logged only). Mirrors
+  # ProofOfScopeSettings.block_exclusions; informational here.
+  block_exclusions: true
+  # Whether scope/window violations are recorded for the compliance report.
+  log_violations: true

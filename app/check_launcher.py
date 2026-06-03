@@ -25,7 +25,7 @@ from app.customizations import apply_pre_run_override
 
 if TYPE_CHECKING:
     from app.db.writers import ObservationWriter
-    from app.guardian import Guardian
+    from app.gates.guardian import Guardian
 
 logger = logging.getLogger(__name__)
 

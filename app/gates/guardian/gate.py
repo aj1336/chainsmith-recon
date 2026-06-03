@@ -1,5 +1,5 @@
 """
-Guardian - Scope Enforcement Gate
+Guardian - Scope Enforcement Gate (Phase 56 folder shape, 56.12)
 
 Single authority for "should this check/URL be allowed to run."
 Logic-based checker (not an AI agent) that validates URLs against
@@ -9,18 +9,23 @@ techniques before execution.
 Wired into the scan pipeline at two levels:
 - CheckLauncher: blocks forbidden check names before execution
 - BaseCheck scope_validator: blocks out-of-scope URLs per-service
+
+This is the `gate` component type (§4.1): deterministic, caller-constructed
+(the scan route / scanner / launcher build it per scan via `from_scope(...)`).
+`app/gates/registry.py` discovers it as a spec for identity + config only.
 """
 
 import logging
 from urllib.parse import urlparse
 
+from app.gates.base import BaseGate
 from app.models import AgentEvent, ComponentType, EventImportance, EventType, ScopeDefinition
 from app.proof_of_scope import ScanWindow, violation_logger
 
 logger = logging.getLogger(__name__)
 
 
-class Guardian:
+class Guardian(BaseGate):
     """Scope enforcement for recon operations."""
 
     def __init__(self, scope: ScopeDefinition):

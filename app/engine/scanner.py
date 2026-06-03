@@ -17,7 +17,7 @@ from app.check_resolver import get_real_checks, resolve_checks
 from app.config import get_config
 from app.db.persist import on_scan_complete, on_scan_start
 from app.db.writers import CheckLogWriter, ObservationWriter
-from app.guardian import Guardian
+from app.gates.guardian import Guardian
 from app.scan_registry import get_registry
 from app.scan_session import ScanSession
 from app.scenarios import get_scenario_manager

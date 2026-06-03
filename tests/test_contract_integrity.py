@@ -14,6 +14,7 @@ _APP = Path(__file__).resolve().parent.parent / "app"
 CHECKS_ROOT = _APP / "checks"
 AGENTS_ROOT = _APP / "agents"
 ADVISORS_ROOT = _APP / "advisors"
+GATES_ROOT = _APP / "gates"
 
 
 def test_check_contracts_have_no_violations():
@@ -35,3 +36,8 @@ def test_advisor_contracts_have_no_violations():
     assert not violations, "Advisor contract violations:\n" + "\n".join(
         f"  - {v}" for v in violations
     )
+
+
+def test_gate_contracts_have_no_violations():
+    violations = verify_contracts(GATES_ROOT, "gate")
+    assert not violations, "Gate contract violations:\n" + "\n".join(f"  - {v}" for v in violations)

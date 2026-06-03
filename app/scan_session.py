@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.check_launcher import CheckLauncher
-    from app.guardian import Guardian
+    from app.gates.guardian import Guardian
     from app.proof_of_scope import ProofOfScopeSettings
     from app.scan_events import ScanEventBus
 

@@ -10,9 +10,8 @@ Pydantic at the I/O boundary; the runtime domain objects (e.g. the
 `CheckCondition` dataclass in `app/checks/base.py`) are converted from these at
 load time. Each `Condition` below mirrors that dataclass.
 
-`check` (56.1-56.9), `agent` (56.10), and `advisor` (56.11) are concrete. The
-`gate` contract is a sibling model discriminated on `type` and lands with 56.12
-(§4.1).
+`check` (56.1-56.9), `agent` (56.10), `advisor` (56.11), and `gate` (56.12) are
+all concrete now — sibling models discriminated on `type` (§4.1).
 """
 
 from __future__ import annotations
@@ -151,20 +150,62 @@ class AdvisorContract(BaseModel):
     reason: str = ""
 
 
-# Registry of contract models by component type. `check`/`agent`/`advisor` are
-# concrete; the `gate` model is added here as 56.12 lands, at which point this
-# becomes the discriminated union described in §4.1.
+class GateContract(BaseModel):
+    """Identity + I/O contract for a `gate` component (§4.1, 56.12).
+
+    Gates are DETERMINISTIC allow/block authorities — they answer "may this
+    proceed?" at the scan chokepoint ([[project_guardian_gating]]). Like an
+    advisor the contract is thin (no check execution wiring, no agent LLM
+    interface), but a gate *decides* rather than *recommends*: its methods
+    return a (allowed, reason) decision and it may record violations
+    (`side_effects: [filesystem]`).
+
+    `enforces` self-documents the distinct gate concerns the component owns
+    (e.g. scope / scan_window / technique for the Guardian) — metadata only,
+    not load-bearing.
+
+    Gates are constructed by their **call site** with per-scan scope data it
+    already holds (the scan route / scanner / launcher build a `Guardian` per
+    scan via `from_scope(...)`), so — exactly like advisors — they are
+    discovered as *specs* (`app/gates/registry.py`) for identity + config
+    resolution only (no `.create()` factory) and `verify_contracts` exempts
+    them from the no-arg constructibility rule. The folder name must equal
+    `name`.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # ─── identity ───────────────────────────────────────────────
+    id: UUID4  # assigned once at authorship
+    name: str  # slug; must match folder name
+    type: Literal["gate"] = "gate"
+    description: str
+    entry: str  # "gate.py:ClassName"
+
+    # ─── gate interface ─────────────────────────────────────────
+    enforces: list[str] = Field(default_factory=list)  # e.g. ["scope", "scan_window", "technique"]
+
+    # ─── I/O + metadata ─────────────────────────────────────────
+    outputs: dict[str, Any] = Field(default_factory=lambda: {"decision": ["GateDecision"]})
+    side_effects: list[SideEffect] = Field(default_factory=lambda: ["none"])
+    references: list[str] = Field(default_factory=list)
+    reason: str = ""
+
+
+# Registry of contract models by component type — the discriminated union
+# described in §4.1. All four types are concrete as of 56.12.
 CONTRACT_MODELS: dict[str, type[BaseModel]] = {
     "check": CheckContract,
     "agent": AgentContract,
     "advisor": AdvisorContract,
+    "gate": GateContract,
 }
 
 
 def contract_model_for(component_type: str) -> type[BaseModel]:
     """Return the Pydantic contract model for a component type.
 
-    Raises KeyError for types not yet specified (`gate` until 56.12 lands) so a
-    premature use fails loudly rather than silently.
+    Raises KeyError for an unknown type so a typo fails loudly rather than
+    silently.
     """
     return CONTRACT_MODELS[component_type]

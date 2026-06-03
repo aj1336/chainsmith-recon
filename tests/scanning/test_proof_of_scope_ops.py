@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-from app.guardian import Guardian
 from app.proof_of_scope import (
     ComplianceReport,
     ComplianceReporter,
@@ -304,136 +303,10 @@ class TestComplianceReporter:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Guardian Scope Enforcement Tests
+# Guardian enforcement tests moved to app/gates/guardian/tests/test_guardian.py
+# (folder-shape co-location, Phase 56.12). The proof-of-scope logging/report
+# tests below stay here.
 # ═══════════════════════════════════════════════════════════════════════════════
-
-
-class TestGuardianUrlScope:
-    """Tests for Guardian URL scope enforcement (replaces ScopeChecker)."""
-
-    def test_exact_match(self):
-        """Exact domain match."""
-        g = Guardian.from_scope("example.com")
-
-        ok, _ = g.check_url("http://example.com/path")
-        assert ok is True
-
-        ok, _ = g.check_url("http://other.com/path")
-        assert ok is False
-
-    def test_wildcard_match(self):
-        """Wildcard pattern match."""
-        g = Guardian.from_scope("*.example.com")
-
-        ok, _ = g.check_url("http://api.example.com/")
-        assert ok is True
-
-        ok, _ = g.check_url("http://sub.api.example.com/")
-        assert ok is True
-
-        ok, _ = g.check_url("http://other.com/")
-        assert ok is False
-
-    def test_exclusions(self):
-        """Exclusions override scope."""
-        g = Guardian.from_scope("*.example.com", exclude=["admin.example.com"])
-
-        ok, _ = g.check_url("http://api.example.com/")
-        assert ok is True
-
-        ok, _ = g.check_url("http://admin.example.com/")
-        assert ok is False
-
-    def test_multiple_exclusions(self):
-        """Multiple exclusion patterns."""
-        g = Guardian.from_scope(
-            "*.example.com",
-            exclude=["admin.example.com", "internal.example.com"],
-        )
-
-        ok, _ = g.check_url("http://admin.example.com/")
-        assert ok is False
-
-        ok, _ = g.check_url("http://internal.example.com/")
-        assert ok is False
-
-        ok, _ = g.check_url("http://api.example.com/")
-        assert ok is True
-
-    def test_url_scope_validator_callback(self):
-        """url_scope_validator works as a BaseCheck scope_validator callback."""
-        g = Guardian.from_scope("example.com")
-
-        assert g.url_scope_validator("http://example.com/test") is True
-        assert g.url_scope_validator("http://evil.com/test") is False
-        assert g.violation_count == 1
-
-    def test_forbidden_technique(self):
-        """Forbidden techniques are blocked."""
-        g = Guardian.from_scope("example.com", forbidden_techniques=["dangerous_check"])
-
-        ok, reason = g.check_technique("dangerous_check")
-        assert ok is False
-        assert "forbidden" in reason
-
-        ok, _ = g.check_technique("safe_check")
-        assert ok is True
-
-
-class TestGuardianScanWindow:
-    """Tests for Guardian.check_scan_window gate."""
-
-    def test_no_window_configured(self):
-        g = Guardian.from_scope("example.com")
-        ok, _ = g.check_scan_window(ScanWindow())
-        assert ok is True
-
-    def test_within_window(self):
-        from datetime import UTC, datetime, timedelta
-
-        now = datetime.now(UTC)
-        window = ScanWindow(
-            start=(now - timedelta(hours=1)).isoformat(),
-            end=(now + timedelta(hours=1)).isoformat(),
-        )
-        g = Guardian.from_scope("example.com")
-        ok, _ = g.check_scan_window(window)
-        assert ok is True
-
-    def test_outside_window_blocks(self, tmp_path, monkeypatch):
-        from datetime import UTC, datetime, timedelta
-
-        from app import proof_of_scope as pos
-
-        monkeypatch.setattr(pos.violation_logger, "_data_dir", tmp_path)
-        monkeypatch.setattr(pos.violation_logger, "_log_file", tmp_path / "v.jsonl")
-
-        past = datetime.now(UTC) - timedelta(days=2)
-        window = ScanWindow(
-            start=(past - timedelta(hours=1)).isoformat(),
-            end=past.isoformat(),
-        )
-        g = Guardian.from_scope("example.com")
-        ok, reason = g.check_scan_window(window, acknowledged=False)
-        assert ok is False
-        assert "outside" in reason.lower()
-
-    def test_outside_window_with_ack_allowed(self, tmp_path, monkeypatch):
-        from datetime import UTC, datetime, timedelta
-
-        from app import proof_of_scope as pos
-
-        monkeypatch.setattr(pos.violation_logger, "_data_dir", tmp_path)
-        monkeypatch.setattr(pos.violation_logger, "_log_file", tmp_path / "v.jsonl")
-
-        past = datetime.now(UTC) - timedelta(days=2)
-        window = ScanWindow(
-            start=(past - timedelta(hours=1)).isoformat(),
-            end=past.isoformat(),
-        )
-        g = Guardian.from_scope("example.com")
-        ok, _ = g.check_scan_window(window, acknowledged=True)
-        assert ok is True
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

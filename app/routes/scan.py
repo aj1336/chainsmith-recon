@@ -24,7 +24,7 @@ from app.check_resolver import infer_suite as _infer_suite
 from app.config import get_config
 from app.db.repositories import CheckLogRepository
 from app.engine.scanner import AVAILABLE_CHECKS, get_check_info, run_scan
-from app.guardian import Guardian
+from app.gates.guardian import Guardian
 from app.scan_context import resolve_session
 from app.scan_registry import get_registry
 from app.scan_session import ScanSession

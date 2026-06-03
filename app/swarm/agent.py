@@ -248,7 +248,7 @@ class SwarmAgent:
         # Scan-window gate — symmetric with coordinator-side Guardian.
         window_data = task_data.get("scan_window")
         if window_data:
-            from app.guardian import Guardian
+            from app.gates.guardian import Guardian
             from app.proof_of_scope import ScanWindow
 
             window = ScanWindow(**window_data)

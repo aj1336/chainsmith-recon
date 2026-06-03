@@ -1,0 +1,19 @@
+# app/gates/guardian/contract.yaml — identity + I/O (Phase 56 §4.1, 56.12)
+
+id: 676c7628-d8f3-46a1-bd0c-0b94fd7cf346
+name: guardian
+type: gate
+description: "Scope enforcement gate: the single chokepoint for scan allow/block decisions. Validates URLs against in-scope/out-of-scope domains (per-service scope_validator), gates scan start against the configured scan window, and blocks forbidden check names. Deterministic, no LLM."
+entry: gate.py:Guardian
+
+enforces:
+  - scope
+  - scan_window
+  - technique
+
+outputs:
+  decision: [GateDecision]
+side_effects: [filesystem]
+references:
+  - docs/future-ideas/phase56-component-modularization.md
+reason: ""
