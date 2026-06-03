@@ -26,6 +26,7 @@ from app.db.repositories import CheckLogRepository
 from app.engine.scanner import AVAILABLE_CHECKS, get_check_info, run_scan
 from app.gates.guardian import Guardian
 from app.scan_context import resolve_session
+from app.scan_presets import get_preset, list_presets, preset_names
 from app.scan_registry import get_registry
 from app.scan_session import ScanSession
 from app.scenarios import get_scenario_manager
@@ -52,6 +53,14 @@ async def start_scan(body: ScanStartInput = ScanStartInput()):
     """
     if not state.target:
         raise HTTPException(400, "Scope not set. POST to /api/scope first.")
+
+    # Validate the preset name up front so an unknown name is a clean 400 rather
+    # than a silently-ignored scan. Resolution itself happens in run_scan.
+    if body.preset and get_preset(body.preset) is None:
+        raise HTTPException(
+            400,
+            f"Unknown preset '{body.preset}'. Available: {', '.join(preset_names())}",
+        )
 
     # Scan-window gate: delegated to Guardian so all scan allow/block
     # decisions remain in a single chokepoint. Uses a per-scan acknowledgment
@@ -106,11 +115,13 @@ async def start_scan(body: ScanStartInput = ScanStartInput()):
             suites=body.suites or None,
             port_profile=body.port_profile or None,
             session=session,
+            preset=body.preset or None,
         )
     )
 
     logger.info(
-        f"Scan queued (id={scan_id}, checks={body.checks or 'all'}, suites={body.suites or 'all'})"
+        f"Scan queued (id={scan_id}, checks={body.checks or 'all'}, "
+        f"suites={body.suites or 'all'}, preset={body.preset or 'none'})"
     )
     return {
         "status": "accepted",
@@ -303,6 +314,13 @@ async def get_check_statuses(
             checks.append(entry)
 
     return {"checks": checks, "scenario": mgr.active.name if mgr.is_active else None}
+
+
+@router.get("/api/v1/scan/presets")
+async def get_scan_presets():
+    """List the available scan presets (name → description) for the CLI/WebUI."""
+    presets = list_presets()
+    return {"presets": [{"name": name, "description": desc} for name, desc in presets.items()]}
 
 
 @router.get("/api/v1/scan/log")

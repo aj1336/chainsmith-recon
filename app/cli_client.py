@@ -106,6 +106,7 @@ class ChainsmithClient:
         checks: list[str] = None,
         suites: list[str] = None,
         port_profile: str = None,
+        preset: str = None,
     ) -> dict:
         body: dict = {}
         if checks:
@@ -114,7 +115,12 @@ class ChainsmithClient:
             body["suites"] = suites
         if port_profile:
             body["port_profile"] = port_profile
+        if preset:
+            body["preset"] = preset
         return self._request("POST", "/api/v1/scan", json=body if body else None)
+
+    def get_scan_presets(self) -> dict:
+        return self._request("GET", "/api/v1/scan/presets")
 
     def get_scan_status(self) -> dict:
         return self._request("GET", "/api/v1/scan")

@@ -124,6 +124,11 @@ def _handle_api_error(e: ChainsmithAPIError):
     type=click.Choice(["web", "ai", "full", "lab"]),
     help="Port scan profile (web, ai, full, lab)",
 )
+@click.option(
+    "--preset",
+    help="Named scan preset (quick, thorough, passive, ai-focused). "
+    "Explicit --suite/--checks/--port-profile override it.",
+)
 @click.pass_context
 def scan(
     ctx,
@@ -143,6 +148,7 @@ def scan(
     no_llm: bool,
     provider: str,
     port_profile: str,
+    preset: str,
 ):
     """Run reconnaissance scan against a target.
 
@@ -166,6 +172,15 @@ def scan(
 
         chainsmith scan example.com --parallel
     """
+    # Validate --preset if specified (local presets file; no server needed)
+    if preset:
+        from app.scan_presets import get_preset, preset_names
+
+        if get_preset(preset) is None:
+            click.echo(click.style(f"Unknown preset: {preset}", fg="red"), err=True)
+            click.echo(f"Available presets: {', '.join(preset_names())}")
+            sys.exit(1)
+
     # Validate --profile if specified
     profile_name = ctx.obj.get("profile")
     if profile_name:
@@ -237,6 +252,8 @@ def scan(
         if not quiet:
             click.echo(style("Chainsmith Recon v1.3.0", fg="cyan", bold=True))
             click.echo(f"Target: {target}")
+            if preset:
+                click.echo(f"Preset: {preset}")
             if exclude:
                 click.echo(f"Excluding: {', '.join(exclude)}")
             if dry_run:
@@ -266,6 +283,7 @@ def scan(
             checks=scan_checks,
             suites=scan_suites,
             port_profile=port_profile if port_profile else None,
+            preset=preset if preset else None,
         )
 
         # 6. Poll until complete

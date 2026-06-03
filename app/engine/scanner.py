@@ -18,6 +18,7 @@ from app.config import get_config
 from app.db.persist import on_scan_complete, on_scan_start
 from app.db.writers import CheckLogWriter, ObservationWriter
 from app.gates.guardian import Guardian
+from app.scan_presets import apply_runtime, get_preset, resolve_selection
 from app.scan_registry import get_registry
 from app.scan_session import ScanSession
 from app.scenarios import get_scenario_manager
@@ -74,6 +75,7 @@ async def run_scan(
     suites: list[str] | None = None,
     port_profile: str | None = None,
     session: "ScanSession | None" = None,
+    preset: str | None = None,
 ):
     """
     Run web reconnaissance checks with progress tracking.
@@ -145,12 +147,28 @@ async def run_scan(
         mgr = get_scenario_manager()
         scenario_name = mgr.active.name if mgr.is_active else None
 
+        # Layer-6 scan-time selection (§5.1): a preset is the floor; explicit
+        # check_names/suites/port_profile passed by the caller win over it.
+        preset_obj = get_preset(preset) if preset else None
+        if preset and preset_obj is None:
+            logger.warning("Unknown scan preset '%s' — ignoring", preset)
+        eff_suites, eff_check_names, eff_port_profile = resolve_selection(
+            preset_obj,
+            suites=suites if suites else None,
+            checks=check_names if check_names else None,
+            port_profile=port_profile,
+        )
+
         checks = resolve_checks(
             techniques=state.techniques if state.techniques else None,
             scenario_name=scenario_name,
-            check_names=check_names if check_names else None,
-            suites=suites if suites else None,
+            check_names=eff_check_names,
+            suites=eff_suites,
         )
+
+        # Apply the preset's runtime layer (intrusive filter + knob overrides)
+        # onto the resolved instances.
+        checks = apply_runtime(preset_obj, checks)
 
         if not checks:
             logger.warning("No checks to run!")
@@ -180,8 +198,8 @@ async def run_scan(
                         f"Extended DNS wordlist with {len(known)} scenario known_hosts: {known}"
                     )
                     break
-        if port_profile:
-            context["port_profile"] = port_profile
+        if eff_port_profile:
+            context["port_profile"] = eff_port_profile
 
         # Initialize session progress tracking
         if session is not None:

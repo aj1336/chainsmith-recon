@@ -68,6 +68,7 @@ class ScanStartInput(BaseModel):
     checks: list[str] = Field(default_factory=list)  # Run only these check names
     suites: list[str] = Field(default_factory=list)  # Run only checks from these suites
     port_profile: Literal["web", "ai", "full", "lab"] | None = None
+    preset: str | None = None  # Named scan preset; explicit checks/suites/port_profile win over it
     acknowledge_outside_window: bool = False  # Per-scan override for scan-window gate
 
 

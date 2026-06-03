@@ -1,0 +1,51 @@
+# app/data/presets.yaml — scan presets (Phase 56.14 / phase-17 Wave 3).
+#
+# A preset is a named, scan-time bundle that layers on top of the per-component
+# config baseline (§5.1 layer 6a). It carries two halves:
+#
+#   selection — which checks run:
+#     suites:        run only checks in these suites (omit/null = all suites)
+#     checks:        run only these exact check names (omit/null = no name filter)
+#     intrusive:     false → drop active-probing checks (the "passive" lens);
+#                    omit/true = no intrusiveness filter
+#     port_profile:  port-scan profile (web | ai | full | lab)
+#
+#   defaults — per-check knob overrides applied to every selected check
+#     (timeout_seconds / requests_per_second / retry_count / delay_between_targets),
+#     plus on_critical. Omitted knobs keep their resolved load-time value.
+#
+# Explicit CLI/API selection (--suite, --checks, --port-profile) is the scalpel
+# and BEATS a preset's selection (§5.1 layer 6b > 6a). Edit this file to retune a
+# preset without touching code; the in-code _FALLBACK_PRESETS in app/scan_presets.py
+# is the byte-equivalent safety net if this file is missing or unparseable.
+
+quick:
+  description: >-
+    Fast surface-level recon — network + web suites only, narrow web port
+    profile, single attempt per check. For a quick first look.
+  suites: [network, web]
+  port_profile: web
+  defaults:
+    retry_count: 1
+
+thorough:
+  description: >-
+    Deep recon across every suite with the widest port profile and an extra
+    retry. The slowest, most complete sweep.
+  port_profile: lab
+  defaults:
+    retry_count: 2
+
+passive:
+  description: >-
+    Non-intrusive checks only — no active probing, injection, or auth attempts.
+    Lower request rate to stay quiet.
+  intrusive: false
+  defaults:
+    requests_per_second: 5.0
+
+ai-focused:
+  description: >-
+    AI/LLM attack surface — ai, agent, rag, cag, and mcp suites. Skips the
+    generic network/web checks to concentrate on model-facing weaknesses.
+  suites: [ai, agent, rag, cag, mcp]
